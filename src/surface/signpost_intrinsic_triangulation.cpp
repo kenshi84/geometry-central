@@ -616,6 +616,67 @@ Face SignpostIntrinsicTriangulation::removeInsertedVertex(Vertex v) {
   return newF;
 }
 
+bool SignpostIntrinsicTriangulation::relocateInsertedVertex(Vertex v, SurfacePoint pointOnIntrinsic) {
+  if (vertexLocations[v].type == SurfacePointType::Vertex) return false; // can't relocate original vertices
+  assert(pointOnIntrinsic.type == SurfacePointType::Face);
+
+  // ensure that the relocated point is within one of the one-ring faces of the vertex
+  Face relocationFace = pointOnIntrinsic.face;
+  std::array<Vertex, 3> fv = {
+    relocationFace.halfedge().vertex(),
+    relocationFace.halfedge().next().vertex(),
+    relocationFace.halfedge().next().next().vertex()
+  };
+  auto v_found = std::find(fv.begin(), fv.end(), v);
+  if (v_found == fv.end()) return false;
+
+  // lay out one-ring vertices
+  size_t i = 0;
+  std::map<Vertex, Vector2> oneRingVertexPositions;
+  for (Halfedge he : v.outgoingHalfedges()) {
+    if (i == v.degree() - 1) break;
+    if (i == 0) {
+      oneRingVertexPositions[he.twin().vertex()] = {intrinsicEdgeLengths[he.edge()], 0};
+    }
+    Vector2 pA = oneRingVertexPositions[he.twin().vertex()];
+    Vector2 pB = {0,0};
+    double lBC = intrinsicEdgeLengths[he.twin().next().edge()];
+    double lCA = intrinsicEdgeLengths[he.twin().next().next().edge()];
+    Vector2 pC = layoutTriangleVertex(pA, pB, lBC, lCA);
+    oneRingVertexPositions[he.twin().next().next().vertex()] = pC;
+    ++i;
+  }
+  assert(oneRingVertexPositions.size() == v.degree());
+
+  // lay out the relocated point
+  std::array<Vector2, 3> vertCoords = vertexCoordinatesInTriangle(relocationFace);
+  Vector2 newPCoord = (pointOnIntrinsic.faceCoords[1] * vertCoords[1] + pointOnIntrinsic.faceCoords[2] * vertCoords[2]);
+  std::map<Vertex, double> distanceFromNearbyVertex;
+  distanceFromNearbyVertex[fv[0]] = norm(newPCoord);
+  distanceFromNearbyVertex[fv[1]] = norm(newPCoord - vertCoords[1]);
+  distanceFromNearbyVertex[fv[2]] = norm(newPCoord - vertCoords[2]);
+  // rotate fv so that fv[0] == v
+  std::rotate(fv.begin(), v_found, fv.end());
+  Vector2 relocatedPosition = layoutTriangleVertex({0,0}, oneRingVertexPositions[fv[1]], distanceFromNearbyVertex[fv[1]], distanceFromNearbyVertex[fv[0]]);
+
+  // for each edge in one-ring polygon, check if the signed area is positive
+  for (Halfedge he : v.outgoingHalfedges()) {
+    Vector2 p0 = oneRingVertexPositions[he.twin().vertex()];
+    Vector2 p1 = oneRingVertexPositions[he.next().twin().vertex()];
+    if (cross(p0 - relocatedPosition, p1 - relocatedPosition) < 0) return false;
+  }
+
+  // update edge lengths
+  for (Halfedge he : v.outgoingHalfedges()) {
+    double newLength = norm(oneRingVertexPositions[he.twin().vertex()] - relocatedPosition);
+    intrinsicEdgeLengths[he.edge()] = newLength;
+    edgeLengths[he.edge()] = newLength;
+  }
+
+  resolveNewVertex(v, pointOnIntrinsic);
+  return true;
+}
+
 Halfedge SignpostIntrinsicTriangulation::splitEdge(Halfedge he, double tSplit) {
   return insertVertex_edge(SurfacePoint(he, tSplit));
 }

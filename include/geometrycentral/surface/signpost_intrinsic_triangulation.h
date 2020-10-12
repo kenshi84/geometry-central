@@ -146,6 +146,9 @@ public:
   // Note: if something goes terribly (numerically?) wrong, will exit without removing the vertex.
   Face removeInsertedVertex(Vertex v);
 
+  // Relocate an inserted vertex to a location inside its trimmed one-ring triangle fan. Returns true if relocated.
+  bool relocateInsertedVertex(Vertex v, SurfacePoint pointOnIntrinsic);
+
   // Split a halfedge
   Halfedge splitEdge(Halfedge he, double tSplit);
 
