@@ -632,7 +632,7 @@ Face SignpostIntrinsicTriangulation::removeInsertedVertex(Vertex v) {
   return newF;
 }
 
-bool SignpostIntrinsicTriangulation::relocateInsertedVertex(Vertex v, SurfacePoint pointOnIntrinsic) {
+bool SignpostIntrinsicTriangulation::relocateInsertedVertex(Vertex v, SurfacePoint pointOnIntrinsic, bool checkOnly) {
   if (vertexLocations[v].type == SurfacePointType::Vertex) return false; // can't relocate original vertices
   assert(pointOnIntrinsic.type == SurfacePointType::Face);
 
@@ -681,6 +681,9 @@ bool SignpostIntrinsicTriangulation::relocateInsertedVertex(Vertex v, SurfacePoi
     Vector2 p1 = oneRingVertexPositions[he.next().twin().vertex()];
     if (cross(p0 - relocatedPosition, p1 - relocatedPosition) < 0) return false;
   }
+
+  if (checkOnly)
+    return true;
 
   // update edge lengths
   for (Halfedge he : v.outgoingHalfedges()) {
