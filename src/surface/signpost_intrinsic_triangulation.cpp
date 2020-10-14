@@ -277,6 +277,22 @@ bool SignpostIntrinsicTriangulation::isDelaunay() {
   return true;
 }
 
+bool SignpostIntrinsicTriangulation::isOriginal(Edge intrinsic_e, Edge* input_e) {
+  SurfacePoint sp0 = vertexLocations[intrinsic_e.halfedge().vertex()];
+  SurfacePoint sp1 = vertexLocations[intrinsic_e.halfedge().twin().vertex()];
+  if (sp0.type != SurfacePointType::Vertex) return false;
+  if (sp1.type != SurfacePointType::Vertex) return false;
+  for (Halfedge input_he : sp0.vertex.incomingHalfedges()) {
+    if (input_he.vertex() == sp1.vertex) {
+      if (input_e) {
+        *input_e = input_he.edge();
+      }
+      return true;
+    }
+  }
+  return false;
+}
+
 double SignpostIntrinsicTriangulation::minAngleDegrees() {
   double minAngle = std::numeric_limits<double>::infinity();
   for (Corner c : mesh.corners()) {
@@ -330,7 +346,7 @@ bool SignpostIntrinsicTriangulation::flipEdgeIfNotDelaunay(Edge e) {
   updateFaceBasis(e.halfedge().face());
   updateFaceBasis(e.halfedge().twin().face());
 
-  edgeIsOriginal[e] = false;
+  edgeIsOriginal[e] = isOriginal(e);
 
   invokeEdgeFlipCallbacks(e);
   return true;
@@ -383,7 +399,7 @@ bool SignpostIntrinsicTriangulation::flipEdgeIfPossible(Edge e, double possibleE
   updateFaceBasis(e.halfedge().face());
   updateFaceBasis(e.halfedge().twin().face());
 
-  edgeIsOriginal[e] = false;
+  edgeIsOriginal[e] = isOriginal(e);
 
   invokeEdgeFlipCallbacks(e);
   return true;

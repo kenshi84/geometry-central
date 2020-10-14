@@ -82,6 +82,8 @@ public:
   bool isDelaunay();
   bool isDelaunay(Edge e);
 
+  bool isOriginal(Edge intrinsic_e, Edge* input_e = nullptr);
+
   // Returns the smallest angle in the intrinsic triangulation, in degrees
   double minAngleDegrees();
 
