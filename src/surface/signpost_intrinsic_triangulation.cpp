@@ -352,7 +352,7 @@ bool SignpostIntrinsicTriangulation::flipEdgeIfNotDelaunay(Edge e) {
   return true;
 }
 
-bool SignpostIntrinsicTriangulation::flipEdgeIfPossible(Edge e, double possibleEPS) {
+bool SignpostIntrinsicTriangulation::flipEdgeIfPossible(Edge e, double possibleEPS, bool checkOnly) {
 
   // Can't flip
   if (isFixed(e)) return false;
@@ -371,7 +371,7 @@ bool SignpostIntrinsicTriangulation::flipEdgeIfPossible(Edge e, double possibleE
 
 
   // Combinatorial flip
-  bool flipped = intrinsicMesh->flip(e);
+  bool flipped = intrinsicMesh->flip(e, checkOnly);
 
   // Might not have been flippable for connectivity reasons
   if (!flipped) {
@@ -387,6 +387,9 @@ bool SignpostIntrinsicTriangulation::flipEdgeIfPossible(Edge e, double possibleE
     intrinsicMesh->flip(e);
     return false;
   }
+
+  if (checkOnly)
+    return true;
 
   // Assign the new edge lengths
   // TODO project to satisfy triangle inequality?

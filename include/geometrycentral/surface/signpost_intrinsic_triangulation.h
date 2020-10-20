@@ -133,7 +133,7 @@ public:
 
   // If the edge can be flipped, flip it (must be combinatorially flippable and inside a convex quad). Returns true if
   // flipped.
-  bool flipEdgeIfPossible(Edge e, double possibleEPS = 1e-6);
+  bool flipEdgeIfPossible(Edge e, double possibleEPS = 1e-6, bool checkOnly = false);
 
   // Insert a new vertex in to the intrinsic triangulation
   Vertex insertVertex(SurfacePoint newPositionOnIntrinsic);

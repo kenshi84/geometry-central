@@ -813,7 +813,7 @@ Face SurfaceMesh::duplicateFace(Face f) {
   return newFace;
 }
 
-bool SurfaceMesh::flip(Edge eFlip) {
+bool SurfaceMesh::flip(Edge eFlip, bool checkOnly) {
   if (eFlip.isBoundary()) return false;
 
   // Get halfedges of first face
@@ -834,10 +834,13 @@ bool SurfaceMesh::flip(Edge eFlip) {
   // if the faces have different orientation, temporarily orient and try again
   if (ha1.orientation() == hb1.orientation()) { // same edge orientation means different face orientation
     invertOrientation(ha1.face());
-    bool flipResult = flip(eFlip);
+    bool flipResult = flip(eFlip, checkOnly);
     invertOrientation(ha1.face());
     return flipResult;
   }
+
+  if (checkOnly)
+    return true;
 
   // Get vertices and faces
   Vertex va = ha1.vertex();
