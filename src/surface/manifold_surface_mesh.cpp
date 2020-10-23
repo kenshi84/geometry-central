@@ -1260,6 +1260,79 @@ Vertex ManifoldSurfaceMesh::collapseInteriorEdge(Edge e) {
   return vA0;
 }
 
+Halfedge ManifoldSurfaceMesh::splitVertexAlongTwoEdges(Halfedge heA, Halfedge heB) {
+  GC_SAFETY_ASSERT(heA != heB, "two halfedges must be distinct");
+  GC_SAFETY_ASSERT(!heA.edge().isBoundary() && !heB.edge().isBoundary(), "both of the two edges must be non-boundary");
+  Vertex v = heA.vertex();
+  GC_SAFETY_ASSERT(!v.isBoundary(), "vertex must be non-boundary");
+  GC_SAFETY_ASSERT(v == heB.vertex(), "both halfedges must be outgoing from a common vertex");
+
+  Halfedge heAT = heA.twin();
+  Halfedge heATNext = heAT.next();
+  Halfedge heBNext = heB.next();
+
+  Face fA = heAT.face();
+  Face fB = heB.face();
+
+  std::set<Halfedge> outgoingHalfedges_between_heB_heA;
+  for (Halfedge he = heB.next().next().twin(); he != heA; he = he.next().next().twin()) {
+    outgoingHalfedges_between_heB_heA.insert(he);
+  }
+
+  Vertex vNew = getNewVertex();
+  Halfedge heNewA = getNewEdgeTriple(false);
+  Halfedge heNewB = getNewEdgeTriple(false);
+  Halfedge heNewC = getNewEdgeTriple(false);
+  Halfedge heNewAT = heNewA.twin();
+  Halfedge heNewBT = heNewB.twin();
+  Halfedge heNewCT = heNewC.twin();
+  Face fNewA = getNewFace();
+  Face fNewB = getNewFace();
+
+  // Pointers for new elements:
+  heNextArr  [heNewA .getIndex()] = heAT.getIndex();
+  heVertexArr[heNewA .getIndex()] = vNew.getIndex();
+  heFaceArr  [heNewA .getIndex()] = fNewA.getIndex();
+  heNextArr  [heNewAT.getIndex()] = heATNext.getIndex();
+  heVertexArr[heNewAT.getIndex()] = heAT.vertex().getIndex();
+  heFaceArr  [heNewAT.getIndex()] = fA.getIndex();
+
+  heNextArr  [heNewB .getIndex()] = heNewCT.getIndex();
+  heVertexArr[heNewB .getIndex()] = heBNext.vertex().getIndex();
+  heFaceArr  [heNewB .getIndex()] = fNewB.getIndex();
+  heNextArr  [heNewBT.getIndex()] = heBNext.getIndex();
+  heVertexArr[heNewBT.getIndex()] = vNew.getIndex();
+  heFaceArr  [heNewBT.getIndex()] = fB.getIndex();
+
+  heNextArr  [heNewC .getIndex()] = heNewA.getIndex();
+  heVertexArr[heNewC .getIndex()] = v.getIndex();
+  heFaceArr  [heNewC .getIndex()] = fNewA.getIndex();
+  heNextArr  [heNewCT.getIndex()] = heB.getIndex();
+  heVertexArr[heNewCT.getIndex()] = vNew.getIndex();
+  heFaceArr  [heNewCT.getIndex()] = fNewB.getIndex();
+
+  vHalfedgeArr[vNew.getIndex()] = heNewCT.getIndex();
+  fHalfedgeArr[fNewA.getIndex()] = heNewA.getIndex();
+  fHalfedgeArr[fNewB.getIndex()] = heNewB.getIndex();
+
+  // Pointer updates for existing elements:
+  heNextArr[heAT.getIndex()] = heNewC.getIndex();
+  heFaceArr[heAT.getIndex()] = fNewA.getIndex();
+
+  heNextArr[heB.getIndex()] = heNewB.getIndex();
+  heFaceArr[heB.getIndex()] = fNewB.getIndex();
+
+  for (Halfedge he : outgoingHalfedges_between_heB_heA)
+    heVertexArr[he.getIndex()] = vNew.getIndex();
+
+  vHalfedgeArr[v.getIndex()] = heA.getIndex();
+  fHalfedgeArr[fA.getIndex()] = heNewAT.getIndex();
+  fHalfedgeArr[fB.getIndex()] = heNewBT.getIndex();
+
+  modificationTick++;
+  return heNewC;
+}
+
 bool ManifoldSurfaceMesh::removeFaceAlongBoundary(Face f) {
 
   // Find the boundary halfedge

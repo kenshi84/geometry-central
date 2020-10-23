@@ -68,6 +68,11 @@ public:
   // Simplified version of collapseEdge, where e and its endpoints are all assumed to be interior
   Vertex collapseInteriorEdge(Edge e);
 
+  // Reverse of collapseInteriorEdge: given two halfedges outgoing from a common non-boundary vertex, create a new vertex,
+  // then create a pair of triangles formed by the original vertex, the new vertex, and the tip of each of the two halfedges.
+  // Returns halfedge pointing from the existing vertex to the new vertex
+  Halfedge splitVertexAlongTwoEdges(Halfedge heA, Halfedge heB);
+
   // Removes a vertex, leaving a high-degree face. If the input is a boundary vertex, preserves an edge along the
   // boundary. Return Face() if impossible (generally because doing so would make a manifold mesh nonmanifold).
   Face removeVertex(Vertex v);
