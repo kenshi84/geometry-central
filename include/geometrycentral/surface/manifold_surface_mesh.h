@@ -65,11 +65,13 @@ public:
   // collapsible. Assumes triangular simplicial complex as input (at least in neighborhood of collapse).
   Vertex collapseEdge(Edge e);
 
-  // Simplified version of collapseEdge, where e and its endpoints are all assumed to be interior
-  Vertex collapseInteriorEdge(Edge e);
+  // Simplified version of collapseEdge, where the edge and its endpoints are all assumed to be interior.
+  // Takes halfedge he as input in order to control which vertex to be deleted (he.vertex is kept).
+  // Returns {he.prev.twin, he.twin.next}, the two outgoing halfedges from the collapsed vertex.
+  std::array<Halfedge, 2> collapseInteriorEdge(Halfedge he);
 
-  // Reverse of collapseInteriorEdge: given two halfedges outgoing from a common non-boundary vertex, create a new vertex,
-  // then create a pair of triangles formed by the original vertex, the new vertex, and the tip of each of the two halfedges.
+  // Reverse of collapseInteriorEdge: given {heA, heB} outgoing from a common non-boundary vertex, create a new vertex to the left of heB,
+  // then create a pair of triangles formed by the original vertex, the new vertex, and the tip of each of {heA, heB}.
   // Returns halfedge pointing from the existing vertex to the new vertex
   Halfedge splitVertexAlongTwoEdges(Halfedge heA, Halfedge heB);
 

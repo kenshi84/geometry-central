@@ -1177,11 +1177,10 @@ Vertex ManifoldSurfaceMesh::collapseEdge(Edge e) {
   return vA;
 }
 
-Vertex ManifoldSurfaceMesh::collapseInteriorEdge(Edge e) {
-  GC_SAFETY_ASSERT(!e.isBoundary(), "edge must be interior");
+std::array<Halfedge, 2> ManifoldSurfaceMesh::collapseInteriorEdge(Halfedge heA0) {
+  GC_SAFETY_ASSERT(!heA0.edge().isBoundary(), "edge must be interior");
 
   // Gather some values
-  Halfedge heA0 = e.halfedge();
   Halfedge heB0 = heA0.twin();
   Vertex vA0 = heA0.vertex();
   Vertex vB0 = heB0.vertex();
@@ -1257,7 +1256,7 @@ Vertex ManifoldSurfaceMesh::collapseInteriorEdge(Edge e) {
   deleteElement(fA);
   deleteElement(fB);
   modificationTick++;
-  return vA0;
+  return { heA2.twin(), heB1 };
 }
 
 Halfedge ManifoldSurfaceMesh::splitVertexAlongTwoEdges(Halfedge heA, Halfedge heB) {
