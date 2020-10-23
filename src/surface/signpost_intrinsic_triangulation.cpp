@@ -635,6 +635,97 @@ Face SignpostIntrinsicTriangulation::removeInsertedVertex(Vertex v) {
   return newF;
 }
 
+std::array<Halfedge, 2> SignpostIntrinsicTriangulation::collapseInteriorEdge(Halfedge he) {
+  if (vertexLocations[he.twin().vertex()].type == SurfacePointType::Vertex)
+    throw "cannot delete original vertex";
+
+  // isometrically lay out one-ring of he.twin.vertex, which is possible because it was inserted (angle sum is 2*PI)
+  std::map<Vertex, Vector2> vertexPositions;
+  for (Halfedge he : he.twin().vertex().outgoingHalfedges())
+    vertexPositions[he.tipVertex()] = halfedgeVector(he);
+
+  // perform collapse
+  Halfedge heA, heB;
+  std::tie(heA, heB) = intrinsicMesh->collapseInteriorEdge(he);
+
+  // update geometry by walking counterclockwise from heB toward heA:
+  // -- edge length
+  assert(vertexPositions.count(heA.vertex()));
+  for (Halfedge he = heB.next().next().twin(); he != heA; he = he.next().next().twin()) {
+    assert(vertexPositions.count(he.twin().vertex()));
+    intrinsicEdgeLengths[he.edge()] = edgeLengths[he.edge()] = norm(vertexPositions[he.twin().vertex()] - vertexPositions[heA.vertex()]);
+    updateAngleFromCWNeighor(he);
+    updateAngleFromCWNeighor(he.twin());
+    edgeIsOriginal[he.edge()] = false;
+  }
+  // -- face basis
+  for (Halfedge he = heB; he != heA; he = he.next().next().twin()) {
+    updateFaceBasis(he.face());
+  }
+
+  return { heA, heB };
+}
+
+Halfedge SignpostIntrinsicTriangulation::splitVertexAlongTwoEdges(Halfedge heA, Halfedge heB, SurfacePoint positionOnInput) {
+  SurfacePoint positionOnIntrinsic = equivalentPointOnIntrinsic(positionOnInput);
+  if (positionOnIntrinsic.type != SurfacePointType::Face)
+    throw "new vertex must be on a face";
+
+  Vertex v = heA.vertex();
+
+  bool found = false;
+  for (Halfedge he = heB; he != heA; he = he.next().next().twin()) {
+    if (he.face() == positionOnIntrinsic.face) {
+      found = true;
+      break;
+    }
+  }
+  if (!found)
+    throw "none of the faces between heB and heA contain positionOnInput";
+
+  Halfedge heNew = intrinsicMesh->splitVertexAlongTwoEdges(heA, heB);
+  Vertex vNew = heNew.twin().vertex();
+  assert(heNew.vertex() == v);
+
+  std::map<Vertex, Vector2> vertexPositions;
+  vertexPositions[v] = {0,0};
+  vertexPositions[heB.twin().vertex()] = {0, intrinsicEdgeLengths[heB.edge()]};
+  for (Halfedge he = heB; he != heA; he = he.next().next().twin()) {
+    vertexPositions[he.next().next().vertex()] = layoutTriangleVertex(
+      {0,0},
+      vertexPositions[he.twin().vertex()],intrinsicEdgeLengths[he.next().edge()],
+      intrinsicEdgeLengths[he.next().next().edge()]);
+  }
+
+  vertexPositions[vNew] = {0,0};
+  int i = 0;
+  for (Vertex fv : positionOnIntrinsic.face.adjacentVertices()) {
+    vertexPositions[vNew] += positionOnIntrinsic.faceCoords[i] * vertexPositions[fv];
+    ++i;
+  }
+
+  // update edge length
+  for (Halfedge he : vNew.incomingHalfedges()) {
+    assert(vertexPositions.count(he.vertex()));
+    Edge e = he.edge();
+    intrinsicEdgeLengths[e] = edgeLengths[e] = norm(vertexPositions[he.vertex()] - vertexPositions[vNew]);
+    edgeIsOriginal[e] = false;
+  }
+  // update edge directions: note that we must walk counterclockwise so we can't use vNew.outgoingHalfedges
+  updateAngleFromCWNeighor(heNew);
+  Halfedge heNewT = heNew.twin();
+  intrinsicHalfedgeDirections[heNewT] = 0;
+  halfedgeVectorsInVertex[heNewT] = halfedgeVector(heNewT);
+  for (Halfedge he = heNewT.next().next().twin(); he != heNewT; he = he.next().next().twin()) {
+    updateAngleFromCWNeighor(he);
+  }
+  for (Face f : vNew.adjacentFaces()) {
+    updateFaceBasis(f);
+  }
+
+  return heNew;
+}
+
 bool SignpostIntrinsicTriangulation::relocateInsertedVertex(Vertex v, SurfacePoint pointOnIntrinsic, bool checkOnly) {
   if (vertexLocations[v].type == SurfacePointType::Vertex) return false; // can't relocate original vertices
   assert(pointOnIntrinsic.type == SurfacePointType::Face);

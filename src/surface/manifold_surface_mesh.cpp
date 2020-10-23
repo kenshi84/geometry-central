@@ -1177,7 +1177,7 @@ Vertex ManifoldSurfaceMesh::collapseEdge(Edge e) {
   return vA;
 }
 
-std::array<Halfedge, 2> ManifoldSurfaceMesh::collapseInteriorEdge(Halfedge heA0) {
+std::tuple<Halfedge, Halfedge> ManifoldSurfaceMesh::collapseInteriorEdge(Halfedge heA0) {
   GC_SAFETY_ASSERT(!heA0.edge().isBoundary(), "edge must be interior");
 
   // Gather some values
@@ -1219,33 +1219,21 @@ std::array<Halfedge, 2> ManifoldSurfaceMesh::collapseInteriorEdge(Halfedge heA0)
   }
   GC_SAFETY_ASSERT(nSkip == 3, "something strange detected");
 
-/*
-  Things to be updated:
-  - heA2     .next = heA1TNext
-  - heA1TPrev.next = heA2
-  - heB1     .next = heB2TNext
-  - heB2TPrev.next = heB1
-  - {vB0_outgoingHalfedges}.vertex = vA0
-  - heA2.face = fAT
-  - heB1.face = fBT
-  - vA0.halfedge = heB1
-  - vA2.halfedge = heA2
-  - vB2.halfedge = heB2TNext
-  - fAT.halfedge = heA2
-  - fBT.halfedge = heB1
-*/
+  heNextArr[heA2.getIndex()] = heA1TNext.getIndex();
+  heFaceArr[heA2.getIndex()] = fAT.getIndex();
 
-  heNextArr[heA2     .getIndex()] = heA1TNext.getIndex();
-  heNextArr[heA1TPrev.getIndex()] = heA2     .getIndex();
-  heNextArr[heB1     .getIndex()] = heB2TNext.getIndex();
-  heNextArr[heB2TPrev.getIndex()] = heB1     .getIndex();
+  heNextArr[heB1.getIndex()] = heB2TNext.getIndex();
+  heFaceArr[heB1.getIndex()] = fBT.getIndex();
+
+  heNextArr[heA1TPrev.getIndex()] = heA2.getIndex();
+  heNextArr[heB2TPrev.getIndex()] = heB1.getIndex();
   for (Halfedge he : vB0_outgoingHalfedges)
     heVertexArr[he.getIndex()] = vA0.getIndex();
-  heFaceArr[heA2.getIndex()] = fAT.getIndex();
-  heFaceArr[heB1.getIndex()] = fBT.getIndex();
+
   vHalfedgeArr[vA0.getIndex()] = heB1.getIndex();
   vHalfedgeArr[vA2.getIndex()] = heA2.getIndex();
   vHalfedgeArr[vB2.getIndex()] = heB2TNext.getIndex();
+
   fHalfedgeArr[fAT.getIndex()] = heA2.getIndex();
   fHalfedgeArr[fBT.getIndex()] = heB1.getIndex();
 

@@ -148,6 +148,18 @@ public:
   // Note: if something goes terribly (numerically?) wrong, will exit without removing the vertex.
   Face removeInsertedVertex(Vertex v);
 
+  // Collapse an interior edge whose endpoints are also assumed to be interior.
+  // Takes halfedge he as input in order to control which vertex to be deleted (he.vertex is kept).
+  // Returns {he.prev.twin, he.twin.next}, the two outgoing halfedges from the collapsed vertex.
+  // Throws when he.twin.vertex (i.e. vertex to be deleted) is an original vertex.
+  std::array<Halfedge, 2> collapseInteriorEdge(Halfedge he);
+
+  // Reverse of collapseInteriorEdge: given {heA, heB} outgoing from a common non-boundary vertex, create a new vertex to the left of heB,
+  // then create a pair of triangles formed by the original vertex, the new vertex, and the tip of each of {heA, heB}.
+  // positionOnInput specifies the new vertex's position, which must be on one of the faces between heB and heA (going counterclockwise)
+  // Returns halfedge pointing from the existing vertex to the new vertex
+  Halfedge splitVertexAlongTwoEdges(Halfedge heA, Halfedge heB, SurfacePoint positionOnInput);
+
   // Relocate an inserted vertex to a location inside its trimmed one-ring triangle fan. Returns true if relocated.
   // With checkOnly==true, only perform the validity check and quit without actually performing the relocation
   bool relocateInsertedVertex(Vertex v, SurfacePoint pointOnIntrinsic, bool checkOnly = false);

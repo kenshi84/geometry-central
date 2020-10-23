@@ -68,7 +68,7 @@ public:
   // Simplified version of collapseEdge, where the edge and its endpoints are all assumed to be interior.
   // Takes halfedge he as input in order to control which vertex to be deleted (he.vertex is kept).
   // Returns {he.prev.twin, he.twin.next}, the two outgoing halfedges from the collapsed vertex.
-  std::array<Halfedge, 2> collapseInteriorEdge(Halfedge he);
+  std::tuple<Halfedge, Halfedge> collapseInteriorEdge(Halfedge he);
 
   // Reverse of collapseInteriorEdge: given {heA, heB} outgoing from a common non-boundary vertex, create a new vertex to the left of heB,
   // then create a pair of triangles formed by the original vertex, the new vertex, and the tip of each of {heA, heB}.
