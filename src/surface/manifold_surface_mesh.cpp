@@ -1177,6 +1177,89 @@ Vertex ManifoldSurfaceMesh::collapseEdge(Edge e) {
   return vA;
 }
 
+Vertex ManifoldSurfaceMesh::collapseInteriorEdge(Edge e) {
+  GC_SAFETY_ASSERT(!e.isBoundary(), "edge must be interior");
+
+  // Gather some values
+  Halfedge heA0 = e.halfedge();
+  Halfedge heB0 = heA0.twin();
+  Vertex vA0 = heA0.vertex();
+  Vertex vB0 = heB0.vertex();
+  GC_SAFETY_ASSERT(!vA0.isBoundary(), "edge's both endpoints must be interior");
+  GC_SAFETY_ASSERT(!vB0.isBoundary(), "edge's both endpoints must be interior");
+
+  Halfedge heA1 = heA0.next();
+  Halfedge heB1 = heB0.next();
+  Halfedge heA2 = heA1.next();
+  Halfedge heB2 = heB1.next();
+  GC_SAFETY_ASSERT(heA2.next() == heA0, "face must be triangular to collapse");
+  GC_SAFETY_ASSERT(heB2.next() == heB0, "face must be triangular to collapse");
+
+  Face fA = heA0.face();
+  Face fB = heB0.face();
+  Vertex vA2 = heA2.vertex();
+  Vertex vB2 = heB2.vertex();
+
+  Halfedge heA1T = heA1.twin();
+  Halfedge heB2T = heB2.twin();
+  Face fAT = heA1T.face();
+  Face fBT = heB2T.face();
+  Halfedge heA1TNext = heA1T.next();
+  Halfedge heB2TNext = heB2T.next();
+  Halfedge heA1TPrev = heA1T.prevOrbitVertex();
+  Halfedge heB2TPrev = heB2T.prevOrbitVertex();
+
+  std::set<Halfedge> vB0_outgoingHalfedges; // except heB0, heA1, heB2T
+  int nSkip = 0;
+  for (Halfedge he : vB0.outgoingHalfedges()) {
+    if (he == heB0 || he == heA1 || he == heB2T) {
+      nSkip++;
+      continue;
+    }
+    vB0_outgoingHalfedges.insert(he);
+  }
+  GC_SAFETY_ASSERT(nSkip == 3, "something strange detected");
+
+/*
+  Things to be updated:
+  - heA2     .next = heA1TNext
+  - heA1TPrev.next = heA2
+  - heB1     .next = heB2TNext
+  - heB2TPrev.next = heB1
+  - {vB0_outgoingHalfedges}.vertex = vA0
+  - heA2.face = fAT
+  - heB1.face = fBT
+  - vA0.halfedge = heB1
+  - vA2.halfedge = heA2
+  - vB2.halfedge = heB2TNext
+  - fAT.halfedge = heA2
+  - fBT.halfedge = heB1
+*/
+
+  heNextArr[heA2     .getIndex()] = heA1TNext.getIndex();
+  heNextArr[heA1TPrev.getIndex()] = heA2     .getIndex();
+  heNextArr[heB1     .getIndex()] = heB2TNext.getIndex();
+  heNextArr[heB2TPrev.getIndex()] = heB1     .getIndex();
+  for (Halfedge he : vB0_outgoingHalfedges)
+    heVertexArr[he.getIndex()] = vA0.getIndex();
+  heFaceArr[heA2.getIndex()] = fAT.getIndex();
+  heFaceArr[heB1.getIndex()] = fBT.getIndex();
+  vHalfedgeArr[vA0.getIndex()] = heB1.getIndex();
+  vHalfedgeArr[vA2.getIndex()] = heA2.getIndex();
+  vHalfedgeArr[vB2.getIndex()] = heB2TNext.getIndex();
+  fHalfedgeArr[fAT.getIndex()] = heA2.getIndex();
+  fHalfedgeArr[fBT.getIndex()] = heB1.getIndex();
+
+  deleteEdgeBundle(heA0.edge());
+  deleteEdgeBundle(heA1.edge());
+  deleteEdgeBundle(heB2.edge());
+  deleteElement(vB0);
+  deleteElement(fA);
+  deleteElement(fB);
+  modificationTick++;
+  return vA0;
+}
+
 bool ManifoldSurfaceMesh::removeFaceAlongBoundary(Face f) {
 
   // Find the boundary halfedge
