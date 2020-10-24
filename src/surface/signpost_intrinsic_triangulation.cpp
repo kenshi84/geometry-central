@@ -654,9 +654,14 @@ std::array<Halfedge, 2> SignpostIntrinsicTriangulation::collapseInteriorEdge(Hal
   for (Halfedge he = heB.next().next().twin(); he != heA; he = he.next().next().twin()) {
     assert(vertexPositions.count(he.twin().vertex()));
     intrinsicEdgeLengths[he.edge()] = edgeLengths[he.edge()] = norm(vertexPositions[he.twin().vertex()] - vertexPositions[heA.vertex()]);
+    edgeIsOriginal[he.edge()] = false;
+  }
+  // -- edge direction
+  for (Halfedge he = heB; ; he = he.next().next().twin()) {
     updateAngleFromCWNeighor(he);
     updateAngleFromCWNeighor(he.twin());
-    edgeIsOriginal[he.edge()] = false;
+    if (he == heA)
+      break;
   }
   // -- face basis
   for (Halfedge he = heB; he != heA; he = he.next().next().twin()) {
@@ -683,41 +688,45 @@ Halfedge SignpostIntrinsicTriangulation::splitVertexAlongTwoEdges(Halfedge heA, 
   if (!found)
     throw "none of the faces between heB and heA contain positionOnInput";
 
-  Halfedge heNew = intrinsicMesh->splitVertexAlongTwoEdges(heA, heB);
-  Vertex vNew = heNew.twin().vertex();
-  assert(heNew.vertex() == v);
-
   std::map<Vertex, Vector2> vertexPositions;
   vertexPositions[v] = {0,0};
   vertexPositions[heB.twin().vertex()] = {0, intrinsicEdgeLengths[heB.edge()]};
   for (Halfedge he = heB; he != heA; he = he.next().next().twin()) {
     vertexPositions[he.next().next().vertex()] = layoutTriangleVertex(
       {0,0},
-      vertexPositions[he.twin().vertex()],intrinsicEdgeLengths[he.next().edge()],
+      vertexPositions[he.next().vertex()],
+      intrinsicEdgeLengths[he.next().edge()],
       intrinsicEdgeLengths[he.next().next().edge()]);
   }
 
-  vertexPositions[vNew] = {0,0};
+  Vector2 vNew_position = {0,0};
   int i = 0;
   for (Vertex fv : positionOnIntrinsic.face.adjacentVertices()) {
-    vertexPositions[vNew] += positionOnIntrinsic.faceCoords[i] * vertexPositions[fv];
+    assert(vertexPositions.count(fv));
+    vNew_position += positionOnIntrinsic.faceCoords[i] * vertexPositions[fv];
     ++i;
   }
+
+  Halfedge heNew = intrinsicMesh->splitVertexAlongTwoEdges(heA, heB);
+  Halfedge heNewT = heNew.twin();
+  Vertex vNew = heNewT.vertex();
+  assert(heNew.vertex() == v);
+  assert(vNew.halfedge() == heNewT);
 
   // update edge length
   for (Halfedge he : vNew.incomingHalfedges()) {
     assert(vertexPositions.count(he.vertex()));
     Edge e = he.edge();
-    intrinsicEdgeLengths[e] = edgeLengths[e] = norm(vertexPositions[he.vertex()] - vertexPositions[vNew]);
+    intrinsicEdgeLengths[e] = edgeLengths[e] = norm(vertexPositions[he.vertex()] - vNew_position);
     edgeIsOriginal[e] = false;
   }
   // update edge directions: note that we must walk counterclockwise so we can't use vNew.outgoingHalfedges
   updateAngleFromCWNeighor(heNew);
-  Halfedge heNewT = heNew.twin();
   intrinsicHalfedgeDirections[heNewT] = 0;
   halfedgeVectorsInVertex[heNewT] = halfedgeVector(heNewT);
   for (Halfedge he = heNewT.next().next().twin(); he != heNewT; he = he.next().next().twin()) {
     updateAngleFromCWNeighor(he);
+    updateAngleFromCWNeighor(he.twin());
   }
   for (Face f : vNew.adjacentFaces()) {
     updateFaceBasis(f);

@@ -157,7 +157,8 @@ public:
   // Reverse of collapseInteriorEdge: given {heA, heB} outgoing from a common non-boundary vertex, create a new vertex to the left of heB,
   // then create a pair of triangles formed by the original vertex, the new vertex, and the tip of each of {heA, heB}.
   // positionOnInput specifies the new vertex's position, which must be on one of the faces between heB and heA (going counterclockwise)
-  // Returns halfedge pointing from the existing vertex to the new vertex
+  // Returns halfedge pointing from the existing vertex to the new vertex.
+  // The new vertex's halfedge is set to the twin of the returned halfedge.
   Halfedge splitVertexAlongTwoEdges(Halfedge heA, Halfedge heB, SurfacePoint positionOnInput);
 
   // Relocate an inserted vertex to a location inside its trimmed one-ring triangle fan. Returns true if relocated.
