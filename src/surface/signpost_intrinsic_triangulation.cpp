@@ -635,25 +635,41 @@ Face SignpostIntrinsicTriangulation::removeInsertedVertex(Vertex v) {
   return newF;
 }
 
-std::array<Halfedge, 2> SignpostIntrinsicTriangulation::collapseInteriorEdge(Halfedge he) {
-  if (vertexLocations[he.twin().vertex()].type == SurfacePointType::Vertex)
+std::array<Halfedge, 2> SignpostIntrinsicTriangulation::collapseInteriorEdge(Halfedge heA0) {
+  if (vertexLocations[heA0.twin().vertex()].type == SurfacePointType::Vertex)
     throw "cannot delete original vertex";
 
   // isometrically lay out one-ring of he.twin.vertex, which is possible because it was inserted (angle sum is 2*PI)
   std::map<Vertex, Vector2> vertexPositions;
-  for (Halfedge he : he.twin().vertex().outgoingHalfedges())
+  for (Halfedge he : heA0.tipVertex().outgoingHalfedges())
     vertexPositions[he.tipVertex()] = halfedgeVector(he);
+
+  // ensure collapse is geometrically feasible
+  Vertex vA0 = heA0.tailVertex();   // vertex to be kept after collapse
+  assert(vertexPositions.count(vA0));
+  for (Halfedge he = heA0.twin().next().next().twin().next(); he.tipVertex() != vA0; he = he.next().twin().next()) {
+    assert(vertexPositions.count(he.tailVertex()));
+    assert(vertexPositions.count(he.tipVertex()));
+    std::array<Vector2, 3> p = {
+      vertexPositions[vA0],
+      vertexPositions[he.tailVertex()],
+      vertexPositions[he.tipVertex()]
+    };
+    if (cross(p[1] - p[0], p[2] - p[0]) < 0)
+      throw "this collapse is geometrically infeasible";
+  }
 
   // perform collapse
   Halfedge heA, heB;
-  std::tie(heA, heB) = intrinsicMesh->collapseInteriorEdge(he);
+  std::tie(heA, heB) = intrinsicMesh->collapseInteriorEdge(heA0);
+  assert(heA.vertex() == vA0);
 
   // update geometry by walking counterclockwise from heB toward heA:
   // -- edge length
-  assert(vertexPositions.count(heA.vertex()));
+  assert(vertexPositions.count(vA0));
   for (Halfedge he = heB.next().next().twin(); he != heA; he = he.next().next().twin()) {
-    assert(vertexPositions.count(he.twin().vertex()));
-    intrinsicEdgeLengths[he.edge()] = edgeLengths[he.edge()] = norm(vertexPositions[he.twin().vertex()] - vertexPositions[heA.vertex()]);
+    assert(vertexPositions.count(he.tipVertex()));
+    intrinsicEdgeLengths[he.edge()] = edgeLengths[he.edge()] = norm(vertexPositions[he.tipVertex()] - vertexPositions[vA0]);
     edgeIsOriginal[he.edge()] = false;
   }
   // -- edge direction
