@@ -1219,20 +1219,39 @@ std::tuple<Halfedge, Halfedge> ManifoldSurfaceMesh::collapseInteriorEdge(Halfedg
   }
   GC_SAFETY_ASSERT(nSkip == 3, "something strange detected");
 
-  heNextArr[heA2.getIndex()] = heA1TNext.getIndex();
-  heFaceArr[heA2.getIndex()] = fAT.getIndex();
+  GC_SAFETY_ASSERT(vB0.degree() >= 3, "something strange detected");
+  if (vB0.degree() == 3) {
+    GC_SAFETY_ASSERT(heB2T == heA1TNext, "");
+    GC_SAFETY_ASSERT(heB2TNext == heA1TPrev, "");
+    GC_SAFETY_ASSERT(fAT == fBT, "");
+    GC_SAFETY_ASSERT(vB0_outgoingHalfedges.empty(), "");
 
-  heNextArr[heB1.getIndex()] = heB2TNext.getIndex();
-  heFaceArr[heB1.getIndex()] = fBT.getIndex();
+    heNextArr[heA2.getIndex()] = heB1.getIndex();
+    heFaceArr[heA2.getIndex()] = fAT.getIndex();
 
-  heNextArr[heA1TPrev.getIndex()] = heA2.getIndex();
-  heNextArr[heB2TPrev.getIndex()] = heB1.getIndex();
-  for (Halfedge he : vB0_outgoingHalfedges)
-    heVertexArr[he.getIndex()] = vA0.getIndex();
+    heNextArr[heB1.getIndex()] = heB2TNext.getIndex();
+    heFaceArr[heB1.getIndex()] = fBT.getIndex();
+
+    heNextArr[heA1TPrev.getIndex()] = heA2.getIndex();
+
+  } else {
+
+    heNextArr[heA2.getIndex()] = heA1TNext.getIndex();
+    heFaceArr[heA2.getIndex()] = fAT.getIndex();
+
+    heNextArr[heB1.getIndex()] = heB2TNext.getIndex();
+    heFaceArr[heB1.getIndex()] = fBT.getIndex();
+
+    heNextArr[heA1TPrev.getIndex()] = heA2.getIndex();
+    heNextArr[heB2TPrev.getIndex()] = heB1.getIndex();
+
+    for (Halfedge he : vB0_outgoingHalfedges)
+      heVertexArr[he.getIndex()] = vA0.getIndex();
+  }
 
   vHalfedgeArr[vA0.getIndex()] = heB1.getIndex();
   vHalfedgeArr[vA2.getIndex()] = heA2.getIndex();
-  vHalfedgeArr[vB2.getIndex()] = heB2TNext.getIndex();
+  vHalfedgeArr[vB2.getIndex()] = heB1.twin().getIndex();
 
   fHalfedgeArr[fAT.getIndex()] = heA2.getIndex();
   fHalfedgeArr[fBT.getIndex()] = heB1.getIndex();
@@ -1244,6 +1263,9 @@ std::tuple<Halfedge, Halfedge> ManifoldSurfaceMesh::collapseInteriorEdge(Halfedg
   deleteElement(fA);
   deleteElement(fB);
   modificationTick++;
+
+  // validateConnectivity();
+
   return { heA2.twin(), heB1 };
 }
 
@@ -1317,6 +1339,9 @@ Halfedge ManifoldSurfaceMesh::splitVertexAlongTwoEdges(Halfedge heA, Halfedge he
   fHalfedgeArr[fB.getIndex()] = heNewBT.getIndex();
 
   modificationTick++;
+
+  // validateConnectivity();
+
   return heNewC;
 }
 
