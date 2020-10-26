@@ -1035,6 +1035,14 @@ void SurfaceMesh::validateConnectivity() {
   if (nFacesFillCount + nBoundaryLoopsCount > nFacesCapacityCount)
     throw std::logic_error("face + bl fill > face capacity");
 
+  // Check for overflow / other unreasonable values
+  if (nHalfedgesCount > std::numeric_limits<uint64_t>::max() / 2) throw std::logic_error("halfedge count overflow");
+  if (nExteriorHalfedges() > std::numeric_limits<uint64_t>::max() / 2)
+    throw std::logic_error("exterior halfedge count overflow");
+  if (nVerticesCount > std::numeric_limits<uint64_t>::max() / 2) throw std::logic_error("vertex count overflow");
+  if (nEdgesCount > std::numeric_limits<uint64_t>::max() / 2) throw std::logic_error("edge count overflow");
+  if (nFacesCount > std::numeric_limits<uint64_t>::max() / 2) throw std::logic_error("face count overflow");
+
   // Helpers to check the validity of references
   auto validateVertex = [&](size_t iV, std::string msg) {
     if (iV >= nVerticesFillCount || vertexIsDead(iV)) throw std::logic_error(msg + " - bad vertex reference");
@@ -1579,6 +1587,10 @@ void SurfaceMesh::expandFaceStorage() {
 
 void SurfaceMesh::deleteEdgeBundle(Edge e) {
 
+  // TODO there are some pitfalls here, because this method needs to test whether the incident halfedges are interior,
+  // but that seemingly means adjacent faces must not have been deleted yet. It seems easy to make a mistake when
+  // deleting lots of elements. Need to think through this carefully and document the "safe" way to perform deletions.
+
   std::vector<size_t> heInds;
   for (Halfedge he : e.adjacentHalfedges()) {
     heInds.push_back(he.getIndex());
@@ -1586,6 +1598,11 @@ void SurfaceMesh::deleteEdgeBundle(Edge e) {
 
   // delete all of the incident halfedges
   for (size_t i : heInds) {
+    nHalfedgesCount--;
+    if (heIsInterior(i)) {
+      nInteriorHalfedgesCount--;
+    }
+
     heNextArr[i] = INVALID_IND;
     heVertexArr[i] = INVALID_IND;
     heFaceArr[i] = INVALID_IND;
@@ -1597,11 +1614,6 @@ void SurfaceMesh::deleteEdgeBundle(Edge e) {
       heVertInPrevArr[i] = INVALID_IND;
       heVertOutNextArr[i] = INVALID_IND;
       heVertOutPrevArr[i] = INVALID_IND;
-    }
-
-    nHalfedgesCount--;
-    if (heIsInterior(i)) {
-      nInteriorHalfedgesCount--;
     }
   }
 
@@ -1794,7 +1806,7 @@ void SurfaceMesh::compressEdges() {
 void SurfaceMesh::compressFaces() {
   // Build the compressing shift
   std::vector<size_t> newIndMap;                                   // maps new ind -> old ind
-  std::vector<size_t> newBLIndMap;                               // maps BL new ind -> old ind
+  std::vector<size_t> newBLIndMap;                                 // maps BL new ind -> old ind
   std::vector<size_t> oldIndMap(nFacesCapacityCount, INVALID_IND); // maps old ind -> new ind
   for (size_t i = 0; i < nFacesCapacityCount; i++) {
     bool isBL = (i >= nFacesCapacityCount - nBoundaryLoopsFillCount);
