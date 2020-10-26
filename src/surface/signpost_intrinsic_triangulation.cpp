@@ -635,9 +635,9 @@ Face SignpostIntrinsicTriangulation::removeInsertedVertex(Vertex v) {
   return newF;
 }
 
-std::array<Halfedge, 2> SignpostIntrinsicTriangulation::collapseInteriorEdge(Halfedge heA0) {
+bool SignpostIntrinsicTriangulation::collapseInteriorEdge(Halfedge heA0, bool checkOnly) {
   if (vertexLocations[heA0.twin().vertex()].type == SurfacePointType::Vertex)
-    throw "cannot delete original vertex";
+    return false;
 
   // isometrically lay out one-ring of he.twin.vertex, which is possible because it was inserted (angle sum is 2*PI)
   std::map<Vertex, Vector2> vertexPositions;
@@ -656,8 +656,11 @@ std::array<Halfedge, 2> SignpostIntrinsicTriangulation::collapseInteriorEdge(Hal
       vertexPositions[he.tipVertex()]
     };
     if (cross(p[1] - p[0], p[2] - p[0]) < 0)
-      throw "this collapse is geometrically infeasible";
+      return false;
   }
+
+  if (checkOnly)
+    return true;
 
   // perform collapse
   Halfedge heA, heB;
@@ -684,7 +687,7 @@ std::array<Halfedge, 2> SignpostIntrinsicTriangulation::collapseInteriorEdge(Hal
     updateFaceBasis(he.face());
   }
 
-  return { heA, heB };
+  return true;
 }
 
 Halfedge SignpostIntrinsicTriangulation::splitVertexAlongTwoEdges(Halfedge heA, Halfedge heB, SurfacePoint positionOnInput) {

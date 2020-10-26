@@ -150,9 +150,9 @@ public:
 
   // Collapse an interior edge whose endpoints are also assumed to be interior.
   // Takes halfedge he as input in order to control which vertex to be deleted (he.vertex is kept).
-  // Returns {he.prev.twin, he.twin.next}, the two outgoing halfedges from the collapsed vertex.
-  // Throws when he.twin.vertex (i.e. vertex to be deleted) is an original vertex.
-  std::array<Halfedge, 2> collapseInteriorEdge(Halfedge he);
+  // Returns false if it fails (when he.twin.vertex (i.e. vertex to be deleted) is an original vertex,
+  // or when the collapse is geometrically infeasible)
+  bool collapseInteriorEdge(Halfedge he, bool checkOnly = false);
 
   // Reverse of collapseInteriorEdge: given {heA, heB} outgoing from a common non-boundary vertex, create a new vertex to the left of heB,
   // then create a pair of triangles formed by the original vertex, the new vertex, and the tip of each of {heA, heB}.
