@@ -94,12 +94,19 @@ inline size_t Vertex::faceDegree() const {
   return k;
 }
 
-inline Edge Vertex::connectingEdge(Vertex vOther) const {
-  for (Edge e : adjacentEdges()) {
-    if (e.otherVertex(*this) == vOther) {
-      return e;
+inline Halfedge Vertex::connectingHalfedge(Vertex vOther) const {
+  for (Halfedge he : outgoingHalfedges()) {
+    if (he.tipVertex() == vOther) {
+      return he;
     }
   }
+  return Halfedge();
+}
+
+inline Edge Vertex::connectingEdge(Vertex vOther) const {
+  Halfedge he = connectingHalfedge(vOther);
+  if (he != Halfedge())
+    return he.edge();
   return Edge();
 }
 

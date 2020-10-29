@@ -71,6 +71,7 @@ public:
   size_t degree() const;
   size_t faceDegree() const;
 
+  Halfedge connectingHalfedge(Vertex vOther) const; // a halfedge from this -- vOther if one exists; Halfedge() otherwise
   Edge connectingEdge(Vertex vOther) const; // an edge from this -- vOther if one exists; Edge() otherwise
 
   // Iterators
