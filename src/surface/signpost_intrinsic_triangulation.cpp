@@ -69,10 +69,6 @@ SignpostIntrinsicTriangulation::SignpostIntrinsicTriangulation(ManifoldSurfaceMe
     vertexLocations[iV] = SurfacePoint(inputMesh.vertex(iV));
   }
 
-  // Initialize all edges as original, but new ones should be false
-  edgeIsOriginal = EdgeData<char>(mesh, false);
-  edgeIsOriginal.fill(true);
-
   requireHalfedgeVectorsInVertex();
   requireHalfedgeVectorsInFace();
   requireVertexAngleSums();
@@ -102,7 +98,7 @@ SurfacePoint SignpostIntrinsicTriangulation::equivalentPointOnIntrinsic(SurfaceP
 
   // If edge on inputMesh is preserved, simply return it. Otherwise treat it as a face point.
   if (pointOnInput.type == SurfacePointType::Edge) {
-    if (edgeIsOriginal[pointOnInput.edge.getIndex()]) {
+    if (isEdgeOriginal(pointOnInput.edge)) {
       return SurfacePoint(intrinsicMesh->edge(pointOnInput.edge.getIndex()), pointOnInput.tEdge);
     }
     pointOnInput = pointOnInput.inSomeFace();
@@ -157,7 +153,7 @@ SurfacePoint SignpostIntrinsicTriangulation::equivalentPointOnInput(SurfacePoint
 
   // If intrinsicMesh edge is preserved, simply return it. Otherwise treat it as a face point.
   if (pointOnIntrinsic.type == SurfacePointType::Edge) {
-    if (edgeIsOriginal[pointOnIntrinsic.edge]) {
+    if (isEdgeOriginal(pointOnIntrinsic.edge)) {
       return SurfacePoint(inputMesh.edge(pointOnIntrinsic.edge.getIndex()), pointOnIntrinsic.tEdge);
     }
     pointOnIntrinsic = pointOnIntrinsic.inSomeFace();
@@ -205,11 +201,7 @@ SurfacePoint SignpostIntrinsicTriangulation::equivalentPointOnInput(SurfacePoint
 std::vector<SurfacePoint> SignpostIntrinsicTriangulation::traceHalfedge(Halfedge he, bool trimEnd) {
 
   // Optimization: don't both tracing original edges, just report them directly
-  if (edgeIsOriginal[he.edge()]) {
-    if (vertexLocations[he.vertex()].type != SurfacePointType::Vertex ||
-        vertexLocations[he.twin().vertex()].type != SurfacePointType::Vertex) {
-      throw std::runtime_error("edgeIsOriginal cache is out of date");
-    }
+  if (isEdgeOriginal(he.edge())) {
     Vertex vA = vertexLocations[he.vertex()].vertex;
     Vertex vB = vertexLocations[he.twin().vertex()].vertex;
     std::vector<SurfacePoint> result{SurfacePoint(vA), SurfacePoint(vB)};
@@ -277,18 +269,18 @@ bool SignpostIntrinsicTriangulation::isDelaunay() {
   return true;
 }
 
-bool SignpostIntrinsicTriangulation::isOriginal(Edge intrinsic_e, Edge* input_e) {
+bool SignpostIntrinsicTriangulation::isEdgeOriginal(Edge intrinsic_e, Edge* input_e_ptr) {
   SurfacePoint sp0 = vertexLocations[intrinsic_e.halfedge().vertex()];
   SurfacePoint sp1 = vertexLocations[intrinsic_e.halfedge().twin().vertex()];
+
   if (sp0.type != SurfacePointType::Vertex) return false;
   if (sp1.type != SurfacePointType::Vertex) return false;
-  for (Halfedge input_he : sp0.vertex.incomingHalfedges()) {
-    if (input_he.vertex() == sp1.vertex) {
-      if (input_e) {
-        *input_e = input_he.edge();
-      }
-      return true;
-    }
+
+  Edge input_e = sp0.vertex.connectingEdge(sp1.vertex);
+  if (input_e.getMesh()) {
+    if (input_e_ptr)
+      *input_e_ptr = input_e;
+    return true;
   }
   return false;
 }
@@ -346,8 +338,6 @@ bool SignpostIntrinsicTriangulation::flipEdgeIfNotDelaunay(Edge e) {
   updateFaceBasis(e.halfedge().face());
   updateFaceBasis(e.halfedge().twin().face());
 
-  edgeIsOriginal[e] = isOriginal(e);
-
   invokeEdgeFlipCallbacks(e);
   return true;
 }
@@ -401,8 +391,6 @@ bool SignpostIntrinsicTriangulation::flipEdgeIfPossible(Edge e, double possibleE
   updateAngleFromCWNeighor(e.halfedge().twin());
   updateFaceBasis(e.halfedge().face());
   updateFaceBasis(e.halfedge().twin().face());
-
-  edgeIsOriginal[e] = isOriginal(e);
 
   invokeEdgeFlipCallbacks(e);
   return true;
@@ -464,7 +452,6 @@ Halfedge SignpostIntrinsicTriangulation::insertVertex_edge(SurfacePoint newP) {
 
   // Put a new vertex inside of the proper intrinsic face
   Halfedge newHeFront = intrinsicMesh->splitEdgeTriangular(insertionEdge);
-  edgeIsOriginal[insertionEdge] = false;
   Vertex newV = newHeFront.vertex();
 
   // = Update data arrays for the new vertex
@@ -673,7 +660,6 @@ bool SignpostIntrinsicTriangulation::collapseInteriorEdge(Halfedge heA0, bool ch
   for (Halfedge he = heB.next().next().twin(); he != heA; he = he.next().next().twin()) {
     assert(vertexPositions.count(he.tipVertex()));
     intrinsicEdgeLengths[he.edge()] = edgeLengths[he.edge()] = norm(vertexPositions[he.tipVertex()] - vertexPositions[vA0]);
-    edgeIsOriginal[he.edge()] = false;
   }
   // -- edge direction
   for (Halfedge he = heB; ; he = he.next().next().twin()) {
@@ -737,7 +723,6 @@ Halfedge SignpostIntrinsicTriangulation::splitVertexAlongTwoEdges(Halfedge heA, 
     assert(vertexPositions.count(he.vertex()));
     Edge e = he.edge();
     intrinsicEdgeLengths[e] = edgeLengths[e] = norm(vertexPositions[he.vertex()] - vNew_position);
-    edgeIsOriginal[e] = false;
   }
   // update edge directions: note that we must walk counterclockwise so we can't use vNew.outgoingHalfedges
   updateAngleFromCWNeighor(heNew);
