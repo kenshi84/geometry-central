@@ -71,6 +71,8 @@ public:
   size_t degree() const;
   size_t faceDegree() const;
 
+  Edge connectingEdge(Vertex vOther) const; // an edge from this -- vOther if one exists; Edge() otherwise
+
   // Iterators
   NavigationSetBase<VertexAdjacentVertexNavigator> adjacentVertices() const;
   NavigationSetBase<VertexIncomingHalfedgeNavigator> incomingHalfedges() const;

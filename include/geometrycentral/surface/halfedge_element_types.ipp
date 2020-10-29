@@ -94,6 +94,15 @@ inline size_t Vertex::faceDegree() const {
   return k;
 }
 
+inline Edge Vertex::connectingEdge(Vertex vOther) const {
+  for (Edge e : adjacentEdges()) {
+    if (e.otherVertex(*this) == vOther) {
+      return e;
+    }
+  }
+  return Edge();
+}
+
 // Navigation iterators 
 inline NavigationSetBase<VertexIncomingHalfedgeNavigator> Vertex::incomingHalfedges() const { 
   return NavigationSetBase<VertexIncomingHalfedgeNavigator>(halfedge().prevOrbitFace()); 
