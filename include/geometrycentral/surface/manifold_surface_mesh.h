@@ -16,7 +16,8 @@ public:
   // The output will preserve the ordering of vertices and faces.
   ManifoldSurfaceMesh(const std::vector<std::vector<size_t>>& polygons);
 
-  // like above, but with an FxD array input, e.g. Fx3 for triangle mesh or Fx4 for quads. T should be some integer type.
+  // like above, but with an FxD array input, e.g. Fx3 for triangle mesh or Fx4 for quads. T should be some integer
+  // type.
   template <typename T>
   ManifoldSurfaceMesh(const Eigen::MatrixBase<T>& triangles);
 
@@ -77,8 +78,11 @@ public:
   // The existing vertex and the new vertex's halfedges are set to the returned halfedge and the twin of the returned halfedge, respectively.
   Halfedge splitVertexAlongTwoEdges(Halfedge heA, Halfedge heB);
 
-  // Removes a vertex, leaving a high-degree face. If the input is a boundary vertex, preserves an edge along the
-  // boundary. Return Face() if impossible (generally because doing so would make a manifold mesh nonmanifold).
+  // Removes a vertex, leaving a high-degree face. Return Face() if impossible (generally because doing so would make a
+  // manifold mesh nonmanifold).
+  // Current implementation limitaitons:
+  //   - not implemented for boundary vertices
+  //   - all incident faces must be triangular
   Face removeVertex(Vertex v);
 
   // Make the edge a mirror image of itself, switching the side the two halfedges are on.
