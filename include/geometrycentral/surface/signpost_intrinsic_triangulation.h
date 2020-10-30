@@ -70,7 +70,7 @@ public:
 
   // Trace out the edges of the intrinsic triangulation along the surface of the input mesh.
   // Each path is ordered along edge.halfedge(), and includes both the start and end points
-  EdgeData<std::vector<SurfacePoint>> traceEdges();
+  EdgeData<std::vector<SurfacePoint>> traceEdges(bool trimEnd = true);
   std::vector<SurfacePoint> traceHalfedge(Halfedge he, bool trimEnd = true); // trace a single intrinsic halfedge
 
   // Given data defined on the intrinsic triangulation, samples it at the vertices of the input triangulation

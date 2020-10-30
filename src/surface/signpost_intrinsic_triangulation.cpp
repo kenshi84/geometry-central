@@ -236,13 +236,13 @@ std::vector<SurfacePoint> SignpostIntrinsicTriangulation::traceHalfedge(Halfedge
   return result.pathPoints;
 }
 
-EdgeData<std::vector<SurfacePoint>> SignpostIntrinsicTriangulation::traceEdges() {
+EdgeData<std::vector<SurfacePoint>> SignpostIntrinsicTriangulation::traceEdges(bool trimEnd) {
 
   EdgeData<std::vector<SurfacePoint>> tracedEdges(mesh);
 
   for (Edge e : mesh.edges()) {
     Halfedge he = e.halfedge();
-    tracedEdges[e] = traceHalfedge(he, false);
+    tracedEdges[e] = traceHalfedge(he, trimEnd);
   }
 
   return tracedEdges;
