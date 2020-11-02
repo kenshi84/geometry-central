@@ -28,6 +28,12 @@ struct Vector2 {
     return Vector2{nan, nan};
   }
 
+  template <typename T>
+  static Vector2 castFrom(const T& v) { return Vector2 {v[0], v[1]}; }
+
+  template <typename T>
+  T castTo() const { T v; v[0] = x; v[1] = y; return v; }
+
 
   // Access-by-index
   double& operator[](int index) { return (&x)[index]; }
