@@ -27,7 +27,7 @@ const double TRACE_EPS_TIGHT = 1e-12;
 const double TRACE_EPS_LOOSE = 1e-9;
 const bool TRACE_PRINT = false;
 
-inline std::array<Vector2, 3> vertexCoordinatesInTriangle(IntrinsicGeometryInterface& geom, Face face) {
+inline std::array<Vector2, 3> vertexCoordinatesInTriangle(const IntrinsicGeometryInterface& geom, Face face) {
   return {Vector2{0., 0.}, geom.halfedgeVectorsInFace[face.halfedge()],
           -geom.halfedgeVectorsInFace[face.halfedge().next().next()]};
 }
@@ -134,7 +134,7 @@ struct TraceSubResult {
 // Note that this expects to be given the trace vector in both barycentric _and_ cartesian coordinates. These are two
 // different representations of the same data! This is useful the barycentric representation is good for relilably
 // performing tracing, while the cartesian representation is good for transforming the trace vector between triangles.
-inline TraceSubResult traceInFaceBarycentric(IntrinsicGeometryInterface& geom, Face face, Vector3 startPoint,
+inline TraceSubResult traceInFaceBarycentric(const IntrinsicGeometryInterface& geom, Face face, Vector3 startPoint,
                                              Vector3 vecBary, Vector2 vecCartesianDir, double vecCartesianLen,
                                              std::array<bool, 3> edgeIsHittable, const TraceOptions& traceOptions) {
 
@@ -327,7 +327,7 @@ inline TraceSubResult traceInFaceBarycentric(IntrinsicGeometryInterface& geom, F
 // Trace within a face towards a given edge. The trace is assumed to start at the vertex opposite towardsHe.
 //   - towardsHe: the halfedge we are tracing towards (opposite the source vertex)
 //   - vecCartesian: vector to trace, in the cartesian basis of the face
-inline TraceSubResult traceInFaceTowardsEdge(IntrinsicGeometryInterface& geom, Halfedge towardsHe,
+inline TraceSubResult traceInFaceTowardsEdge(const IntrinsicGeometryInterface& geom, Halfedge towardsHe,
                                              Vector2 vecCartesianDir, double vecCartesianLen,
                                              const TraceOptions& traceOptions) {
 
@@ -390,7 +390,7 @@ inline TraceSubResult traceInFaceTowardsEdge(IntrinsicGeometryInterface& geom, H
 //   - fromHe: the halfedge we enter from along the face
 //   - tCrossFrom: t value in [0, 1] along fromHe we we enter the face
 //   - traceVecInHalfedge: vector to trace, in the basis of fromHe
-inline TraceSubResult traceInFaceFromEdge(IntrinsicGeometryInterface& geom, Halfedge fromHe, double tCrossFrom,
+inline TraceSubResult traceInFaceFromEdge(const IntrinsicGeometryInterface& geom, Halfedge fromHe, double tCrossFrom,
                                           Vector2 traceVecInHalfedgeDir, double traceVecInHalfedgeLen,
                                           const TraceOptions& traceOptions) {
 
@@ -472,7 +472,7 @@ inline TraceSubResult traceInFaceFromEdge(IntrinsicGeometryInterface& geom, Half
 
 
 // Trace starting from an edge
-inline TraceSubResult traceGeodesic_fromEdge(IntrinsicGeometryInterface& geom, Edge currEdge, double tEdge,
+inline TraceSubResult traceGeodesic_fromEdge(const IntrinsicGeometryInterface& geom, Edge currEdge, double tEdge,
                                              Vector2 currVecDir, double currVecLen, const TraceOptions& traceOptions) {
 
   if (TRACE_PRINT) cout << "  edge trace " << currEdge << " tEdge = " << tEdge << " edge vec = " << currVecDir << endl;
@@ -509,7 +509,7 @@ inline TraceSubResult traceGeodesic_fromEdge(IntrinsicGeometryInterface& geom, E
 }
 
 // Trace starting from a face
-inline TraceSubResult traceGeodesic_fromFace(IntrinsicGeometryInterface& geom, Face currFace, Vector3 faceBary,
+inline TraceSubResult traceGeodesic_fromFace(const IntrinsicGeometryInterface& geom, Face currFace, Vector3 faceBary,
                                              Vector2 currVecDir, double currVecLen, const TraceOptions& traceOptions) {
 
   // Convert the vector to barycentric
@@ -522,7 +522,7 @@ inline TraceSubResult traceGeodesic_fromFace(IntrinsicGeometryInterface& geom, F
 
 
 // Trace starting from a vertex (with a rescaled cartesian vector)
-inline TraceSubResult traceGeodesic_fromVertex(IntrinsicGeometryInterface& geom, Vertex currVert, Vector2 currVecDir,
+inline TraceSubResult traceGeodesic_fromVertex(const IntrinsicGeometryInterface& geom, Vertex currVert, Vector2 currVecDir,
                                                double currVecLen, const TraceOptions& traceOptions) {
   if (TRACE_PRINT) cout << "  vertex trace " << currVert << " edge vec = " << currVecDir << endl;
 
@@ -625,7 +625,7 @@ inline TraceSubResult traceGeodesic_fromVertex(IntrinsicGeometryInterface& geom,
 
 // Run tracing iteratively in faces, after on of the variants below has gotten it started.
 // Will internally add the point path point encoded by prevTraceEnd, don't add beforehand.
-void traceGeodesic_iterative(IntrinsicGeometryInterface& geom, TraceGeodesicResult& result, TraceSubResult prevTraceEnd,
+void traceGeodesic_iterative(const IntrinsicGeometryInterface& geom, TraceGeodesicResult& result, TraceSubResult prevTraceEnd,
                              const TraceOptions& traceOptions) {
 
   // Now, points are always in faces. Trace until termination.
@@ -678,12 +678,8 @@ void traceGeodesic_iterative(IntrinsicGeometryInterface& geom, TraceGeodesicResu
 
 } // namespace
 
-TraceGeodesicResult traceGeodesic(IntrinsicGeometryInterface& geom, SurfacePoint startP, Vector2 traceVec,
+TraceGeodesicResult traceGeodesic(const IntrinsicGeometryInterface& geom, SurfacePoint startP, Vector2 traceVec,
                                   const TraceOptions& traceOptions) {
-  geom.requireVertexAngleSums();
-  geom.requireHalfedgeVectorsInVertex();
-  geom.requireHalfedgeVectorsInFace();
-
   // The output data
   TraceGeodesicResult result;
   result.hasPath = traceOptions.includePath;
@@ -695,10 +691,6 @@ TraceGeodesicResult traceGeodesic(IntrinsicGeometryInterface& geom, SurfacePoint
 
   // Quick out with a zero vector
   if (traceVec.norm2() == 0) {
-    geom.unrequireVertexAngleSums();
-    geom.unrequireHalfedgeVectorsInVertex();
-    geom.unrequireHalfedgeVectorsInFace();
-
     result.endPoint = startP;
     result.endingDir = Vector2::zero();
 
@@ -733,21 +725,13 @@ TraceGeodesicResult traceGeodesic(IntrinsicGeometryInterface& geom, SurfacePoint
   // Keep tracing through triangles until finished
   traceGeodesic_iterative(geom, result, prevTraceEnd, traceOptions);
 
-  geom.unrequireVertexAngleSums();
-  geom.unrequireHalfedgeVectorsInVertex();
-  geom.unrequireHalfedgeVectorsInFace();
-
   return result;
 }
 
 
-TraceGeodesicResult traceGeodesic(IntrinsicGeometryInterface& geom, Face startFace, Vector3 startBary,
+TraceGeodesicResult traceGeodesic(const IntrinsicGeometryInterface& geom, Face startFace, Vector3 startBary,
                                   Vector3 traceBaryVec, const TraceOptions& traceOptions) {
 
-
-  geom.requireVertexAngleSums();
-  geom.requireHalfedgeVectorsInVertex();
-  geom.requireHalfedgeVectorsInFace();
 
   // The output data
   TraceGeodesicResult result;
@@ -763,10 +747,6 @@ TraceGeodesicResult traceGeodesic(IntrinsicGeometryInterface& geom, Face startFa
 
   // Early-out if zero
   if (traceBaryVec.norm2() == 0) {
-    geom.unrequireVertexAngleSums();
-    geom.unrequireHalfedgeVectorsInVertex();
-    geom.unrequireHalfedgeVectorsInFace();
-
     // probably want to ensure we still return a point in a face...
     if (traceOptions.errorOnProblem) {
       throw std::runtime_error("zero vec passed to trace, do something good here");
@@ -791,10 +771,6 @@ TraceGeodesicResult traceGeodesic(IntrinsicGeometryInterface& geom, Face startFa
 
   // Keep tracing through triangles until finished
   traceGeodesic_iterative(geom, result, prevTraceEnd, traceOptions);
-
-  geom.unrequireVertexAngleSums();
-  geom.unrequireHalfedgeVectorsInVertex();
-  geom.unrequireHalfedgeVectorsInFace();
 
   return result;
 }
