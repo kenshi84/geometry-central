@@ -102,7 +102,7 @@ public:
 
       // Layout the other two vertices in the triangle (source is implicitly at origin)
       Vector2 rightP{eLen, 0.};
-      Vector2 leftP = layoutTriangleVertex(Vector2::zero(), rightP, geom.edgeLengths[he.next().edge()],
+      Vector2 leftP = layoutTriangleVertexFromLength(Vector2::zero(), rightP, geom.edgeLengths[he.next().edge()],
                                            geom.edgeLengths[he.next().next().edge()]);
 
       // Create a window across the opposite edge
@@ -128,7 +128,7 @@ public:
 
       // Lay out the third vertex
       Vector2 newPos =
-          layoutTriangleVertex(uEdge.leftPos, uEdge.rightPos, geom.edgeLengths[uEdge.acrossHe.next().edge()],
+          layoutTriangleVertexFromLength(uEdge.leftPos, uEdge.rightPos, geom.edgeLengths[uEdge.acrossHe.next().edge()],
                                geom.edgeLengths[uEdge.acrossHe.next().next().edge()]);
 
       // Add to the list of close vertices if it is one, and spawn new windows if needed

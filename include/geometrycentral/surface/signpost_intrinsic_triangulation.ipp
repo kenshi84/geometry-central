@@ -88,8 +88,8 @@ inline std::array<Vector2, 4> SignpostIntrinsicTriangulation::layoutDiamond(Half
   // Lay out the vertices of the diamond
   Vector2 p3{0., 0.};
   Vector2 p0{l30, 0.};
-  Vector2 p2 = layoutTriangleVertex(p3, p0, l02, l23); // involves more arithmetic than strictly necessary
-  Vector2 p1 = layoutTriangleVertex(p2, p0, l01, l12);
+  Vector2 p2 = layoutTriangleVertexFromLength(p3, p0, l02, l23); // involves more arithmetic than strictly necessary
+  Vector2 p1 = layoutTriangleVertexFromLength(p2, p0, l01, l12);
 
   return {p0, p1, p2, p3};
 }

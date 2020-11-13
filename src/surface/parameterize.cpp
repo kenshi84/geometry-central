@@ -99,7 +99,7 @@ VertexData<Vector2> parameterizeDisk(ManifoldSurfaceMesh& origMesh, IntrinsicGeo
         double lCA = uLens[he.edge()];
         double lBC = uLens[heOpp.next().edge()];
 
-        Vector2 newPos = layoutTriangleVertex(pA, pB, lBC, lCA);
+        Vector2 newPos = layoutTriangleVertexFromLength(pA, pB, lBC, lCA);
         avgPos += newPos;
         avgCount++;
       }

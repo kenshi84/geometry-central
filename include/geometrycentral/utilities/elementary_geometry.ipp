@@ -8,7 +8,7 @@ inline double triangleArea(double lAB, double lBC, double lCA) {
   return area;
 }
 
-inline Vector2 layoutTriangleVertex(const Vector2& pA, const Vector2& pB, const double& lBC, const double& lCA) {
+inline Vector2 layoutTriangleVertexFromLength(const Vector2& pA, const Vector2& pB, const double& lBC, const double& lCA) {
 
   const double lAB = norm(pB - pA);
   double tArea = triangleArea(lAB, lBC, lCA);
@@ -27,6 +27,28 @@ inline Vector2 layoutTriangleVertex(const Vector2& pA, const Vector2& pB, const 
 
   return pC;
 }
+
+inline Vector2 layoutTriangleVertexFromAngle(const Vector2& pA, const Vector2& pB, const double& aCAB, const double& aCBA) {
+  Vector2 dAB = pB - pA;
+  Vector2 dAC = dAB * Vector2::fromAngle(aCAB);     // rotate counterclockwise
+  Vector2 dBC = -dAB * Vector2::fromAngle(-aCBA);   // rotate clockwise
+
+  // Intersect two lines: A + s * dAC = B + t * dBC
+  //   [dAC  -dBC] [s] = [B - A]
+  //   [         ] [t]   [     ]
+  double m00 = dAC.x, m01 = -dBC.x,
+         m10 = dAC.y, m11 = -dBC.y;
+  double d = 1. / (m00*m11 - m01*m10);
+  double s = d * (m11 * dAB.x + -m01 * dAB.y);
+  double t = d * (-m10 * dAB.x + m00 * dAB.y);
+
+  Vector2 pC = pA + s * dAC;
+
+  assert(norm2(pB + t * dBC - pC) < 1.e-10);
+
+  return pC;
+}
+
 
 inline double pointLineSegmentDistance(Vector2 p, Vector2 lineA, Vector2 lineB) {
   double len2 = (lineA - lineB).norm2();

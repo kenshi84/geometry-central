@@ -697,7 +697,7 @@ Halfedge SignpostIntrinsicTriangulation::splitVertexAlongTwoEdges(Halfedge heA, 
   vertexPositions[v] = {0,0};
   vertexPositions[heB.twin().vertex()] = {0, intrinsicEdgeLengths[heB.edge()]};
   for (Halfedge he = heB; he != heA; he = he.next().next().twin()) {
-    vertexPositions[he.next().next().vertex()] = layoutTriangleVertex(
+    vertexPositions[he.next().next().vertex()] = layoutTriangleVertexFromLength(
       {0,0},
       vertexPositions[he.next().vertex()],
       intrinsicEdgeLengths[he.next().edge()],
@@ -765,7 +765,7 @@ bool SignpostIntrinsicTriangulation::relocateInsertedVertex(Vertex v, SurfacePoi
     Vector2 pB = {0,0};
     double lBC = intrinsicEdgeLengths[he.twin().next().edge()];
     double lCA = intrinsicEdgeLengths[he.twin().next().next().edge()];
-    Vector2 pC = layoutTriangleVertex(pA, pB, lBC, lCA);
+    Vector2 pC = layoutTriangleVertexFromLength(pA, pB, lBC, lCA);
     oneRingVertexPositions[he.twin().next().next().vertex()] = pC;
     ++i;
   }
@@ -780,7 +780,7 @@ bool SignpostIntrinsicTriangulation::relocateInsertedVertex(Vertex v, SurfacePoi
   distanceFromNearbyVertex[fv[2]] = norm(newPCoord - vertCoords[2]);
   // rotate fv so that fv[0] == v
   std::rotate(fv.begin(), v_found, fv.end());
-  Vector2 relocatedPosition = layoutTriangleVertex({0,0}, oneRingVertexPositions[fv[1]], distanceFromNearbyVertex[fv[1]], distanceFromNearbyVertex[fv[0]]);
+  Vector2 relocatedPosition = layoutTriangleVertexFromLength({0,0}, oneRingVertexPositions[fv[1]], distanceFromNearbyVertex[fv[1]], distanceFromNearbyVertex[fv[0]]);
 
   // for each edge in one-ring polygon, check if the signed area is positive
   for (Halfedge he : v.outgoingHalfedges()) {
@@ -1247,7 +1247,7 @@ void SignpostIntrinsicTriangulation::updateFaceBasis(Face f) {
 
   Vector2 p0{0., 0.};
   Vector2 p1{a, 0.};
-  Vector2 p2 = layoutTriangleVertex(p0, p1, b, c);
+  Vector2 p2 = layoutTriangleVertexFromLength(p0, p1, b, c);
 
   he = f.halfedge();
   halfedgeVectorsInFace[he] = p1 - p0;

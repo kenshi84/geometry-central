@@ -43,8 +43,8 @@ size_t flipToDelaunay(SurfaceMesh& mesh, EdgeData<double>& edgeLengths, FlipType
 
       Vector2 p3{0., 0.};
       Vector2 p0{l30, 0.};
-      Vector2 p2 = layoutTriangleVertex(p3, p0, l02, l23); // involves more arithmetic than strictly necessary
-      Vector2 p1 = layoutTriangleVertex(p2, p0, l01, l12);
+      Vector2 p2 = layoutTriangleVertexFromLength(p3, p0, l02, l23); // involves more arithmetic than strictly necessary
+      Vector2 p1 = layoutTriangleVertexFromLength(p2, p0, l01, l12);
       double newLen = (p1 - p3).norm();
       return newLen;
       break;

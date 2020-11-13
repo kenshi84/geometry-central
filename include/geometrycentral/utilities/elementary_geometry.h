@@ -13,7 +13,12 @@ double triangleArea(double lA, double lB, double lC);
 
 // For triangle A,B,C, given vertex positions pA and pB, compute pC, such that lengths lBC and lCA are realized.
 // pC will be placed on the side which gives CCW winding of ABC.
-Vector2 layoutTriangleVertex(const Vector2& pA, const Vector2& pB, const double& lBC, const double& lCA);
+Vector2 layoutTriangleVertexFromLength(const Vector2& pA, const Vector2& pB, const double& lBC, const double& lCA);
+
+
+// For triangle A,B,C, given vertex positions pA and pB, compute pC, such that angles aCAB and aCBA are realized.
+// pC will be placed on the side which gives CCW winding of ABC.
+Vector2 layoutTriangleVertexFromAngle(const Vector2& pA, const Vector2& pB, const double& aCAB, const double& aCBA);
 
 
 double pointLineSegmentDistance(Vector2 p, Vector2 lineA, Vector2 lineB);
