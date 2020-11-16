@@ -30,7 +30,12 @@ void load(Archive& archive, Eigen::Matrix<Scalar,Rows,Cols,Options,MaxRows,MaxCo
 namespace geometrycentral {
 
 template <typename T>
-inline std::string toSerializedBlob(const T& obj) {
+inline typename std::enable_if<detail::has_toSerializedBlob<T>::value, std::string>::type toSerializedBlob(const T& obj) {
+  return obj.toSerializedBlob();
+}
+
+template <typename T>
+inline typename std::enable_if<!detail::has_toSerializedBlob<T>::value, std::string>::type toSerializedBlob(const T& obj) {
   std::ostringstream oss;
   cereal::PortableBinaryOutputArchive oarchive(oss);
   oarchive(obj);

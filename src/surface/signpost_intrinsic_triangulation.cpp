@@ -133,11 +133,11 @@ SignpostIntrinsicTriangulation::SignpostIntrinsicTriangulation(ManifoldSurfaceMe
 std::string SignpostIntrinsicTriangulation::toSerializedBlob() const {
   std::array<std::string, 6> splitBlobs = {
     ::geometrycentral::toSerializedBlob(intrinsicMesh),
-    intrinsicEdgeLengths.toSerializedBlob(),
-    intrinsicHalfedgeDirections.toSerializedBlob(),
-    intrinsicVertexAngleSums.toSerializedBlob(),
-    vertexLocations.toSerializedBlob(),
-    markedEdges.toSerializedBlob()
+    ::geometrycentral::toSerializedBlob(intrinsicEdgeLengths),
+    ::geometrycentral::toSerializedBlob(intrinsicHalfedgeDirections),
+    ::geometrycentral::toSerializedBlob(intrinsicVertexAngleSums),
+    ::geometrycentral::toSerializedBlob(vertexLocations),
+    ::geometrycentral::toSerializedBlob(markedEdges)
   };
   return ::geometrycentral::toSerializedBlob(splitBlobs);
 }
