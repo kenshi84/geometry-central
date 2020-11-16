@@ -8,6 +8,10 @@
 #include <iomanip>
 #include <queue>
 
+#include <cereal/types/array.hpp>
+#include <cereal/types/string.hpp>
+#include <cereal/types/memory.hpp>
+
 using std::cout;
 using std::endl;
 
@@ -81,6 +85,69 @@ SignpostIntrinsicTriangulation::SignpostIntrinsicTriangulation(ManifoldSurfaceMe
     }
   };
   edgeSplitCallbackList.push_back(updateMarkedEdges);
+}
+
+SignpostIntrinsicTriangulation::SignpostIntrinsicTriangulation(ManifoldSurfaceMesh& mesh_, IntrinsicGeometryInterface& inputGeom_, const std::string& serializedBlob)
+    : IntrinsicGeometryInterface(*getIntrinsicMeshFromSerializedBlob(serializedBlob).release()), inputMesh(mesh_), inputGeom(inputGeom_),
+      intrinsicMesh(dynamic_cast<ManifoldSurfaceMesh*>(&mesh)) {
+
+  // Make sure the input mesh is triangular
+  if (!mesh.isTriangular()) {
+    throw std::runtime_error("signpost triangulation requires triangle mesh as input");
+  }
+
+  // == Initialize geometric data
+  inputGeom.requireEdgeLengths();
+  inputGeom.requireHalfedgeVectorsInVertex();
+  inputGeom.requireHalfedgeVectorsInFace();
+  inputGeom.requireVertexAngleSums();
+  inputGeom.requireCornerAngles();
+
+  std::array<std::string, 6> splitBlobs;
+  fromSerializedBlob(serializedBlob, splitBlobs);
+
+  intrinsicEdgeLengths = EdgeData<double>(mesh, splitBlobs[1]);
+  intrinsicHalfedgeDirections = HalfedgeData<double>(mesh, splitBlobs[2]);
+  intrinsicVertexAngleSums = VertexData<double>(mesh, splitBlobs[3]);
+  vertexLocations = VertexData<SurfacePoint>(mesh, splitBlobs[4]);
+  markedEdges = EdgeData<char>(mesh, splitBlobs[5]);
+
+  for (Vertex v : mesh.vertices())
+    vertexLocations[v].setMesh(&inputMesh);
+
+  requireCornerAngles();
+  requireHalfedgeVectorsInVertex();
+  requireHalfedgeVectorsInFace();
+  requireVertexAngleSums();
+
+  // == Register the default callback which maintains marked edges
+  auto updateMarkedEdges = [&](Edge oldE, Halfedge newHe1, Halfedge newHe2) {
+    if (markedEdges.size() > 0 && markedEdges[oldE]) {
+      markedEdges[newHe1.edge()] = true;
+      markedEdges[newHe2.edge()] = true;
+    }
+  };
+  edgeSplitCallbackList.push_back(updateMarkedEdges);
+}
+
+std::string SignpostIntrinsicTriangulation::toSerializedBlob() const {
+  std::array<std::string, 6> splitBlobs = {
+    ::geometrycentral::toSerializedBlob(intrinsicMesh),
+    intrinsicEdgeLengths.toSerializedBlob(),
+    intrinsicHalfedgeDirections.toSerializedBlob(),
+    intrinsicVertexAngleSums.toSerializedBlob(),
+    vertexLocations.toSerializedBlob(),
+    markedEdges.toSerializedBlob()
+  };
+  return ::geometrycentral::toSerializedBlob(splitBlobs);
+}
+
+std::unique_ptr<ManifoldSurfaceMesh> SignpostIntrinsicTriangulation::getIntrinsicMeshFromSerializedBlob(const std::string& blob) {
+  std::array<std::string, 6> splitBlobs;
+  fromSerializedBlob(blob, splitBlobs);
+  std::unique_ptr<ManifoldSurfaceMesh> mesh;
+  fromSerializedBlob(splitBlobs[0], mesh);
+  return mesh;
 }
 
 void SignpostIntrinsicTriangulation::setMarkedEdges(const EdgeData<char>& markedEdges_) {

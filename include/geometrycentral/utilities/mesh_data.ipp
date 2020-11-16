@@ -2,6 +2,8 @@
 
 // === Implementations for datatypes which hold data stored on the mesh
 
+#include "serialization.h"
+
 namespace geometrycentral {
 namespace surface {
 
@@ -37,6 +39,12 @@ MeshData<E, T>::MeshData(ParentMeshT& parentMesh, const Eigen::Matrix<T, Eigen::
                          const MeshData<E, size_t>& indexer)
     : MeshData(parentMesh) {
   fromVector(vector, indexer);
+}
+
+template <typename E, typename T>
+MeshData<E, T>::MeshData(ParentMeshT& parentMesh, const std::string& serializedBlob)
+    : MeshData(parentMesh) {
+  fromSerializedBlob(serializedBlob);
 }
 
 template <typename E, typename T>
@@ -191,6 +199,18 @@ void MeshData<E, T>::fromVector(const Eigen::Matrix<T, Eigen::Dynamic, 1>& vecto
       (*this)[e] = vector(indexer[e]);
     }
   }
+}
+
+template <typename E, typename T>
+void MeshData<E, T>::fromSerializedBlob(const std::string& serializedBlob) {
+  Eigen::Matrix<T, Eigen::Dynamic, 1> v;
+  ::geometrycentral::fromSerializedBlob(serializedBlob, v);
+  fromVector(v);
+}
+
+template <typename E, typename T>
+inline std::string MeshData<E, T>::toSerializedBlob() const {
+  return ::geometrycentral::toSerializedBlob(toVector());
 }
 
 template <typename E, typename T>

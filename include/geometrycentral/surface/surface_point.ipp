@@ -14,6 +14,29 @@ inline SurfacePoint::SurfacePoint(Face f, Vector3 faceCoords_)
     : type(SurfacePointType::Face), face(f), faceCoords(faceCoords_) {}
 
 
+// === Serialization
+template <class Archive>
+void SurfacePoint::serialize(Archive& ar) {
+  ar(type);
+
+  if (type == SurfacePointType::Vertex) {
+    ar(vertex);
+  } else if (type == SurfacePointType::Edge) {
+    ar(edge, tEdge);
+  } else {
+    ar(face, faceCoords);
+  }
+}
+
+inline void SurfacePoint::setMesh(SurfaceMesh* mesh) {
+  if (type == SurfacePointType::Vertex)
+    vertex.setMesh(mesh);
+  else if (type == SurfacePointType::Edge)
+    edge.setMesh(mesh);
+  else
+    face.setMesh(mesh);
+}
+
 // == Methods
 
 inline std::ostream& operator<<(std::ostream& output, const SurfacePoint& p) {

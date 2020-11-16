@@ -15,6 +15,10 @@ struct Vector3 {
   // Components
   double x, y, z;
 
+  template <class Archive>
+  void serialize(Archive& ar) {
+    ar(x, y, z);
+  }
 
   static Vector3 zero() { return Vector3{0., 0., 0.}; }
   static Vector3 constant(double c) { return Vector3{c, c, c}; }

@@ -40,6 +40,12 @@ struct SurfacePoint {
   Face face = Face();
   Vector3 faceCoords = Vector3::undefined();
 
+  // === Serialization
+  template <class Archive>
+  void serialize(Archive& ar);
+
+  // This needs to be called after being deserialized
+  inline void setMesh(SurfaceMesh* mesh);
 
   // === Methods
 

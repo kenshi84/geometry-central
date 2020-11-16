@@ -9,6 +9,8 @@
 #include <memory>
 #include <vector>
 
+#include <cereal/access.hpp>
+
 // NOTE: ipp includes at bottom of file
 
 namespace geometrycentral {
@@ -397,6 +399,11 @@ protected:
   friend struct VertexNeighborIteratorState;
 
   friend class RichSurfaceMeshData;
+
+  friend class cereal::access;
+
+  template <class Archive>
+  void serialize(Archive& ar);
 };
 
 } // namespace surface

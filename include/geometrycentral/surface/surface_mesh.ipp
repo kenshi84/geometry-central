@@ -2,6 +2,8 @@
 
 #include "geometrycentral/numerical/linear_algebra_utilities.h"
 
+#include <cereal/types/vector.hpp>
+
 namespace geometrycentral {
 namespace surface {
 
@@ -129,6 +131,51 @@ DenseMatrix<T> SurfaceMesh::getFaceVertexMatrix() {
   return mat;
 }
 
+
+// === Serialization
+
+template <class Archive>
+void SurfaceMesh::serialize(Archive& ar) {
+  ar(heNextArr);
+  ar(heVertexArr);
+  ar(heFaceArr);
+  ar(vHalfedgeArr);
+  ar(fHalfedgeArr);
+
+  ar(heSiblingArr);
+  ar(heEdgeArr);
+  ar(heOrientArr);
+  ar(eHalfedgeArr);
+
+  ar(heVertInNextArr);
+  ar(heVertInPrevArr);
+  ar(vHeInStartArr);
+  ar(heVertOutNextArr);
+  ar(heVertOutPrevArr);
+  ar(vHeOutStartArr);
+
+  ar(nHalfedgesCount);
+  ar(nInteriorHalfedgesCount);
+  ar(nEdgesCount);
+  ar(nVerticesCount);
+  ar(nFacesCount);
+  ar(nBoundaryLoopsCount);
+
+  ar(nVerticesCapacityCount);
+  ar(nHalfedgesCapacityCount);
+  ar(nEdgesCapacityCount);
+  ar(nFacesCapacityCount);
+
+  ar(nVerticesFillCount);
+  ar(nHalfedgesFillCount);
+  ar(nEdgesFillCount);
+  ar(nFacesFillCount);
+  ar(nBoundaryLoopsFillCount);
+
+  ar(isCompressedFlag);
+
+  ar(modificationTick);  
+}
 
 } // namespace surface
 } // namespace geometrycentral

@@ -64,6 +64,9 @@ public:
   MeshData(ParentMeshT& parentMesh, const Eigen::Matrix<T, Eigen::Dynamic, 1>& vector,
            const MeshData<E, size_t>& indexer);
 
+  // Construction by deserialization
+  MeshData(ParentMeshT& parentMesh, const std::string& serializedBlob);
+
   // Rule of 5
   MeshData(const MeshData<E, T>& other);                      // copy constructor
   MeshData(MeshData<E, T>&& other) noexcept;                  // move constructor
@@ -103,6 +106,10 @@ public:
   Eigen::Matrix<T, Eigen::Dynamic, 1> toVector(const MeshData<E, size_t>& indexer) const;
   void fromVector(const Eigen::Matrix<T, Eigen::Dynamic, 1>& vector);
   void fromVector(const Eigen::Matrix<T, Eigen::Dynamic, 1>& vector, const MeshData<E, size_t>& indexer);
+
+  void fromSerializedBlob(const std::string& blob);
+
+  std::string toSerializedBlob() const;
 
   // Naively reinterpret the data as residing on another mesh, constructing a new container
   MeshData<E, T> reinterpretTo(ParentMeshT& targetMesh) const;

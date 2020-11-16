@@ -64,6 +64,10 @@ public:
   Element(ParentMeshT* mesh, size_t ind); // construct pointing to the i'th element of that type on a mesh.
   // Element(const DynamicElement<T>& e);          // construct from a dynamic element of matching type
 
+  // Serialization
+  template <class Archive>
+  void serialize(Archive& ar);
+
   inline bool operator==(const Element<T, M>& other) const;
   inline bool operator!=(const Element<T, M>& other) const;
   inline bool operator>(const Element<T, M>& other) const;
@@ -80,6 +84,8 @@ public:
 
   // Get the parent mesh on which the element is defined.
   ParentMeshT* getMesh() const;
+
+  void setMesh(ParentMeshT* mesh);
 
   bool isDead() const;
 

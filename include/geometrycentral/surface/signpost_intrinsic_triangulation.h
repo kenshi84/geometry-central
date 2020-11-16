@@ -22,6 +22,13 @@ public:
   // just be a copy of the input mesh.
   SignpostIntrinsicTriangulation(ManifoldSurfaceMesh& mesh, IntrinsicGeometryInterface& inputGeom);
 
+  // Construct from serialized blob
+  SignpostIntrinsicTriangulation(ManifoldSurfaceMesh& mesh, IntrinsicGeometryInterface& inputGeom, const std::string& serializedBlob);
+
+  std::string toSerializedBlob() const;
+
+  static std::unique_ptr<ManifoldSurfaceMesh> getIntrinsicMeshFromSerializedBlob(const std::string& serializedBlob);
+
   // ======================================================
   // ======== Core Members
   // ======================================================

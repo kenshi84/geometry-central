@@ -1,5 +1,7 @@
 #pragma once
 
+#include "serialization.h"
+
 // Implementations for halfedge_mesh_types.ipp
 
 namespace geometrycentral {
@@ -17,6 +19,13 @@ template<typename T, typename M>
 Element<T, M>::Element(ParentMeshT* mesh_, size_t ind_) : mesh(mesh_), ind(ind_) {}
 //template<typename T, typename M> 
 //Element<T, M>::Element(const DynamicElement<T>& e) : mesh(e.getMesh()), ind(e.getIndex()) {}
+
+// Serialization
+template<typename T, typename M> 
+template <class Archive>
+void Element<T, M>::serialize(Archive& ar) {
+  ar(ind);
+}
 
 // Comparators
 template<typename T, typename M> 
@@ -37,6 +46,10 @@ size_t Element<T, M>::getIndex() const { return ind; }
 
 template <typename T, typename M>
 M* Element<T, M>::getMesh() const { return mesh; }
+
+template <typename T, typename M>
+void Element<T, M>::setMesh(ParentMeshT* mesh_) { mesh = mesh_; }
+
 }
 
 namespace std {

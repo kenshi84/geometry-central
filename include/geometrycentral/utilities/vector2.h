@@ -14,6 +14,11 @@ namespace geometrycentral {
 struct Vector2 {
   double x, y;
 
+  template <class Archive>
+  void serialize(Archive& ar) {
+    ar(x, y);
+  }
+
   static Vector2 zero() { return Vector2{0., 0.}; }
   static Vector2 constant(double c) { return Vector2{c, c}; }
   static Vector2 fromAngle(double theta) { return Vector2{std::cos(theta), std::sin(theta)}; }
