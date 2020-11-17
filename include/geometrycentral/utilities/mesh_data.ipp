@@ -210,6 +210,8 @@ void MeshData<E, T>::fromSerializedBlob(const std::string& serializedBlob) {
 
 template <typename E, typename T>
 inline std::string MeshData<E, T>::toSerializedBlob() const {
+  if (!mesh)
+    return "";
   return ::geometrycentral::toSerializedBlob(toVector());
 }
 

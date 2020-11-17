@@ -110,7 +110,8 @@ SignpostIntrinsicTriangulation::SignpostIntrinsicTriangulation(ManifoldSurfaceMe
   intrinsicHalfedgeDirections = HalfedgeData<double>(mesh, splitBlobs[2]);
   intrinsicVertexAngleSums = VertexData<double>(mesh, splitBlobs[3]);
   vertexLocations = VertexData<SurfacePoint>(mesh, splitBlobs[4]);
-  markedEdges = EdgeData<char>(mesh, splitBlobs[5]);
+  if (!splitBlobs[5].empty())
+    markedEdges = EdgeData<char>(mesh, splitBlobs[5]);
 
   for (Vertex v : mesh.vertices())
     vertexLocations[v].setMesh(&inputMesh);
