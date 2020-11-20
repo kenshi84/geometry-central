@@ -34,10 +34,10 @@ struct Vector2 {
   }
 
   template <typename T>
-  static Vector2 castFrom(const T& v) { return Vector2 {v[0], v[1]}; }
+  static Vector2 castFrom(const T& v);
 
   template <typename T>
-  T castTo() const { T v; v[0] = x; v[1] = y; return v; }
+  T castTo() const;
 
 
   // Access-by-index

@@ -1,5 +1,40 @@
 namespace geometrycentral {
 
+template <typename T>
+inline Vector3 Vector3::castFrom(const T& v) {
+  return {
+    (double)v[0],
+    (double)v[1],
+    (double)v[2]};
+}
+
+namespace detail {
+
+// https://stackoverflow.com/a/9154394
+template <typename T>
+inline auto castTo_impl(const Vector3& me, T& out, int dummy) -> decltype(out.resize(3), void()) {
+  out.resize(3);
+  out[0] = me.x;
+  out[1] = me.y;
+  out[2] = me.z;
+}
+
+template <typename T>
+inline auto castTo_impl(const Vector3& me, T& out, long dummy) -> decltype(void()) {
+  out[0] = me.x;
+  out[1] = me.y;
+  out[2] = me.z;
+}
+
+}
+
+template <typename T>
+inline T Vector3::castTo() const {
+  T out;
+  detail::castTo_impl(*this, out, 0);
+  return out;
+}
+
 inline Vector3 Vector3::operator+(const Vector3& v) const { return Vector3{x + v.x, y + v.y, z + v.z}; }
 
 inline Vector3 Vector3::operator-(const Vector3& v) const { return Vector3{x - v.x, y - v.y, z - v.z}; }

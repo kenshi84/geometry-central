@@ -1,6 +1,39 @@
 
 namespace geometrycentral {
 
+template <typename T>
+Vector2 Vector2::castFrom(const T& v) {
+  return {
+    (double)v[0],
+    (double)v[1]
+  };
+}
+
+namespace detail {
+
+// https://stackoverflow.com/a/9154394
+template <typename T>
+inline auto castTo_impl(const Vector2& me, T& out, int dummy) -> decltype(out.resize(2), void()) {
+  out.resize(2);
+  out[0] = me.x;
+  out[1] = me.y;
+}
+
+template <typename T>
+inline auto castTo_impl(const Vector2& me, T& out, long dummy) -> decltype(void()) {
+  out[0] = me.x;
+  out[1] = me.y;
+}
+
+}
+
+template <typename T>
+T Vector2::castTo() const {
+  T out;
+  detail::castTo_impl(*this, out, 0);
+  return out;
+}
+
 inline Vector2 Vector2::operator+(const Vector2& v) const { return Vector2{x + v.x, y + v.y}; }
 
 inline Vector2 Vector2::operator-(const Vector2& v) const { return Vector2{x - v.x, y - v.y}; }

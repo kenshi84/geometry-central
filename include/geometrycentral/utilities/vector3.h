@@ -32,10 +32,11 @@ struct Vector3 {
   }
 
   template <typename T>
-  static Vector3 castFrom(const T& v) { return Vector3{v[0], v[1], v[2]}; }
+  static Vector3 castFrom(const T& v);
 
   template <typename T>
-  T castTo() const { T v; v[0] = x; v[1] = y; v[2] = z; return v; }
+  T castTo() const;
+
 
   // Access-by-index
   double& operator[](int index) { return (&x)[index]; }
