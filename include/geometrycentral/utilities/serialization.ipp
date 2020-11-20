@@ -29,17 +29,29 @@ void load(Archive& archive, Eigen::Matrix<Scalar,Rows,Cols,Options,MaxRows,MaxCo
 
 namespace geometrycentral {
 
+namespace detail {
+
+// https://stackoverflow.com/a/9154394
 template <typename T>
-inline typename std::enable_if<detail::has_toSerializedBlob<T>::value, std::string>::type toSerializedBlob(const T& obj) {
-  return obj.toSerializedBlob();
+inline auto toSerializedBlob_impl(const T& obj, std::ostringstream& oss, cereal::PortableBinaryOutputArchive& oarchive, std::string& out, int dummy) -> decltype(obj.toSerializedBlob(), void()) {
+  out = obj.toSerializedBlob();
 }
 
 template <typename T>
-inline typename std::enable_if<!detail::has_toSerializedBlob<T>::value, std::string>::type toSerializedBlob(const T& obj) {
+inline auto toSerializedBlob_impl(const T& obj, std::ostringstream& oss, cereal::PortableBinaryOutputArchive& oarchive, std::string& out, int long) -> decltype(oarchive(obj), void()) {
+  oarchive(obj);
+  out = oss.str();
+}
+
+}
+
+template <typename T>
+inline std::string toSerializedBlob(const T& obj) {
   std::ostringstream oss;
   cereal::PortableBinaryOutputArchive oarchive(oss);
-  oarchive(obj);
-  return oss.str();
+  std::string out;
+  detail::toSerializedBlob_impl(obj, oss, oarchive, out, 0);
+  return out;
 }
 
 template <typename T>
