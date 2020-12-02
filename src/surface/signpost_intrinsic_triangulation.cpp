@@ -744,8 +744,7 @@ bool SignpostIntrinsicTriangulation::collapseInteriorEdge(Halfedge heA0, bool ch
   return true;
 }
 
-Halfedge SignpostIntrinsicTriangulation::splitVertexAlongTwoEdges(Halfedge heA, Halfedge heB, SurfacePoint positionOnInput) {
-  SurfacePoint positionOnIntrinsic = equivalentPointOnIntrinsic(positionOnInput);
+Halfedge SignpostIntrinsicTriangulation::splitVertexAlongTwoEdges(Halfedge heA, Halfedge heB, SurfacePoint positionOnIntrinsic) {
   if (positionOnIntrinsic.type != SurfacePointType::Face)
     throw "new vertex must be on a face";
 
