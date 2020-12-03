@@ -744,57 +744,136 @@ bool SignpostIntrinsicTriangulation::collapseInteriorEdge(Halfedge heA0, bool ch
   return true;
 }
 
-Halfedge SignpostIntrinsicTriangulation::splitVertexAlongTwoEdges(Halfedge heA, Halfedge heB, SurfacePoint positionOnIntrinsic) {
-  if (positionOnIntrinsic.type != SurfacePointType::Face)
-    throw "new vertex must be on a face";
+Halfedge SignpostIntrinsicTriangulation::splitVertexAlongTwoEdges(Halfedge heA, Halfedge heB, Vector2 traceVec) {
+  Vertex vOrig = heA.vertex();
 
-  Vertex v = heA.vertex();
-
-  bool found = false;
-  for (Halfedge he = heB; he != heA; he = he.next().next().twin()) {
-    if (he.face() == positionOnIntrinsic.face) {
-      found = true;
-      break;
+  // Ensure that traceVec is on the left of heA and on the right of heB
+  {
+    Vector2 pA = halfedgeVector(heA);
+    Vector2 pB = halfedgeVector(heB);
+    Vector2 pA_unit = pA.normalize();
+    double angle0 = (traceVec / pA_unit).arg();
+    double angle1 = (pB / pA_unit).arg();
+    if (angle0 < 0) angle0 += 2. * M_PI;
+    if (angle1 < 0) angle1 += 2. * M_PI;
+    if (angle1 < angle0) {
+      std::swap(heA, heB);
     }
   }
-  if (!found)
-    throw "none of the faces between heB and heA contain positionOnInput";
 
-  std::map<Vertex, Vector2> vertexPositions;
-  vertexPositions[v] = {0,0};
-  vertexPositions[heB.twin().vertex()] = {0, intrinsicEdgeLengths[heB.edge()]};
-  for (Halfedge he = heB; he != heA; he = he.next().next().twin()) {
-    vertexPositions[he.next().next().vertex()] = layoutTriangleVertexFromLength(
-      {0,0},
-      vertexPositions[he.next().vertex()],
-      intrinsicEdgeLengths[he.next().edge()],
-      intrinsicEdgeLengths[he.next().next().edge()]);
+  SurfacePoint vNew_positionOnIntrinsic = traceGeodesic(*this, {vOrig}, traceVec).endPoint;
+  SurfacePoint vNew_positionOnInput = equivalentPointOnInput(vNew_positionOnIntrinsic);
+  assert(vNew_positionOnInput.type == SurfacePointType::Face);
+
+  // Ensure that the traced point is inside vOrig's one-ring, plus the triangle fan can be flattened without overlapping
+  {
+    bool found = false;
+    double angleSum = 0;
+    for (Halfedge he = heA; he != heB; he = he.next().next().twin()) {
+      if (he.face() == vNew_positionOnIntrinsic.face) {
+        found = true;
+      }
+      angleSum += cornerAngle(he.corner());
+    }
+    if (!found) {
+      throw "traceVec goes outside the vertex one-ring";
+    }
+    if (angleSum >= 2. * M_PI) {
+      throw "The vertex has extremely high sum of corner angles";
+    }
   }
 
-  Vector2 vNew_position = {0,0};
+  // Define positions of vertices around the newly inserted vertex in a temporary 2D coordinate system
+  std::map<Vertex, Vector2> vertexTempPositions;
+  vertexTempPositions[vOrig] = {0,0};
+  vertexTempPositions[heA.tipVertex()] = {intrinsicEdgeLengths[heA.edge()], 0};
+  for (Halfedge he = heA; he != heB; he = he.next().next().twin()) {
+    vertexTempPositions[he.next().tipVertex()] = layoutTriangleVertexFromLength(
+      {0,0},
+      vertexTempPositions.at(he.tipVertex()),
+      intrinsicEdgeLengths[he.next().edge()],
+      intrinsicEdgeLengths[he.next().next().edge()]
+    );
+  }
+
+  // Compute 2D position for the newly inserted vertex using the above defined vertex positions
+  Vector2 vNew_tempPosition = {0,0};
   int i = 0;
-  for (Vertex fv : positionOnIntrinsic.face.adjacentVertices()) {
-    assert(vertexPositions.count(fv));
-    vNew_position += positionOnIntrinsic.faceCoords[i] * vertexPositions[fv];
+  for (Vertex fv : vNew_positionOnIntrinsic.face.adjacentVertices()) {
+    vNew_tempPosition += vNew_positionOnIntrinsic.faceCoords[i] * vertexTempPositions.at(fv);
     ++i;
   }
 
+  // Ensure all new triangles' areas area positive
+  for (Halfedge he = heA; he != heB; he = he.next().next().twin()) {
+    Vector2 p0 = vertexTempPositions.at(he.tipVertex()) - vNew_tempPosition;
+    Vector2 p1 = vertexTempPositions.at(he.next().tipVertex()) - vNew_tempPosition;
+    if (cross(p0, p1) < 0)
+      throw "traceVec is infeasible (creates face with negative area)";
+  }
+
+  // Perform split topologically
   Halfedge heNew = intrinsicMesh->splitVertexAlongTwoEdges(heA, heB);
   Halfedge heNewT = heNew.twin();
   Vertex vNew = heNewT.vertex();
-  assert(heNew.vertex() == v);
+  assert(heNew.vertex() == vOrig);
+  assert(vOrig.halfedge() == heNew);
   assert(vNew.halfedge() == heNewT);
 
-  // update edge length
+  // Update edge length
+  assert(vertexTempPositions.size() == vNew.degree());
   for (Halfedge he : vNew.incomingHalfedges()) {
-    assert(vertexPositions.count(he.vertex()));
     Edge e = he.edge();
-    intrinsicEdgeLengths[e] = edgeLengths[e] = norm(vertexPositions[he.vertex()] - vNew_position);
+    intrinsicEdgeLengths[e] = edgeLengths[e] = norm(vertexTempPositions.at(he.vertex()) - vNew_tempPosition);
   }
-  // update edge directions: note that we must walk counterclockwise so we can't use vNew.outgoingHalfedges
+
+  // Update angle for the new halfedge outgoing from the existing vertex
   updateAngleFromCWNeighor(heNew);
-  intrinsicHalfedgeDirections[heNewT] = 0;
+
+  // Figure out position/direction info for the new vertex & the new halfedge outgoing from the new vertex
+  vertexLocations[vNew] = vNew_positionOnInput;
+  intrinsicVertexAngleSums[vNew] = vertexAngleSums[vNew] = 2. * M_PI;
+
+  // Update edge directions
+  {
+    // Barycentric coordinates representing the halfedge vector in face
+    Face fInput = vNew_positionOnInput.face;
+    Vector3 faceCoords = vNew_positionOnInput.faceCoords;
+
+    // vOrig can be either a vertex point or a face point
+    SurfacePoint vOrig_positionOnInput = vertexLocations[vOrig];
+    if (vOrig_positionOnInput.type == SurfacePointType::Face) {
+      // Face point
+      assert(vOrig_positionOnInput.face == fInput);
+      faceCoords -= vOrig_positionOnInput.faceCoords;
+    } else {
+      // Vertex point
+      assert(vOrig_positionOnInput.type == SurfacePointType::Vertex);
+      int i = 0;
+      for (Vertex vInput : vNew_positionOnInput.face.adjacentVertices()) {
+        if (vInput == vOrig_positionOnInput.vertex) break;
+        ++i;
+      }
+      assert(i < 3);
+      faceCoords[i] -= 1.;
+    }
+    faceCoords *= -1.;    // The halfedge vector is oriented from vNew to vOrig
+
+    // Convert barycentric coordinates to actual vector in face
+    std::array<Vector2, 3> vertexCoordinatesInTriangle = {
+      Vector2{0., 0.},
+      inputGeom.halfedgeVectorsInFace[fInput.halfedge()],
+      -inputGeom.halfedgeVectorsInFace[fInput.halfedge().next().next()]
+    };
+    Vector2 halfedgeVectorInface = {0., 0.};
+    for (int i = 0; i < 3; ++i)
+      halfedgeVectorInface += faceCoords[i] * vertexCoordinatesInTriangle[i];
+
+    intrinsicHalfedgeDirections[heNewT] = halfedgeVectorInface.arg();
+  }
   halfedgeVectorsInVertex[heNewT] = halfedgeVector(heNewT);
+
+  // Set angles for edges adjacent to the new vertex; we must walk counterclockwise, so we can't use vNew.outgoingHalfedges()
   for (Halfedge he = heNewT.next().next().twin(); he != heNewT; he = he.next().next().twin()) {
     updateAngleFromCWNeighor(he);
     updateAngleFromCWNeighor(he.twin());

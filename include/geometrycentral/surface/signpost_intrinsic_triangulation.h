@@ -160,12 +160,15 @@ public:
   // or when the collapse is geometrically infeasible)
   bool collapseInteriorEdge(Halfedge he, bool checkOnly = false);
 
-  // Reverse of collapseInteriorEdge: given {heA, heB} outgoing from a common non-boundary vertex, create a new vertex to the left of heB,
-  // then create a pair of triangles formed by the original vertex, the new vertex, and the tip of each of {heA, heB}.
-  // positionOnIntrinsic specifies the new vertex's position, which must be on one of the faces between heB and heA (going counterclockwise)
+  // Reverse of collapseInteriorEdge: given {heA, heB} outgoing from a common non-boundary vertex, create
+  // a new vertex at a position offset from the common vertex by traceVec, then create a pair of triangles
+  // formed by the original vertex, the new vertex, and the tip of each of {heA, heB}.
   // Returns halfedge pointing from the existing vertex to the new vertex.
-  // The new vertex's halfedge is set to the twin of the returned halfedge.
-  Halfedge splitVertexAlongTwoEdges(Halfedge heA, Halfedge heB, SurfacePoint positionOnIntrinsic);
+  // The existing vertex and the new vertex's halfedges are set to the returned halfedge and the twin of the returned halfedge, respectively.
+  // The operation is deemed infeasible in some cases (e.g., traceVec is too large and exits the vertex's
+  // one ring, the flattened triangle fan of faces between heA & heB is highly concave and gives rise to
+  // negatively oriented face, etc) where the method throws.
+  Halfedge splitVertexAlongTwoEdges(Halfedge heA, Halfedge heB, Vector2 traceVec);
 
   // Relocate an inserted vertex to a location inside its trimmed one-ring triangle fan. Returns true if relocated.
   // With checkOnly==true, only perform the validity check and quit without actually performing the relocation

@@ -1276,73 +1276,134 @@ Halfedge ManifoldSurfaceMesh::splitVertexAlongTwoEdges(Halfedge heA, Halfedge he
   GC_SAFETY_ASSERT(!v.isBoundary(), "vertex must be non-boundary");
   GC_SAFETY_ASSERT(v == heB.vertex(), "both halfedges must be outgoing from a common vertex");
 
-  Halfedge heAT = heA.twin();
-  Halfedge heATNext = heAT.next();
-  Halfedge heBNext = heB.next();
+  // Collect references to existing elements before updating connectivity
 
-  Face fA = heAT.face();
-  Face fB = heB.face();
+  Vertex vA = heA.tipVertex();
+  Vertex vB = heB.tipVertex();
 
-  std::set<Halfedge> outgoingHalfedges_between_heB_heA;
-  for (Halfedge he = heB.next().next().twin(); he != heA; he = he.next().next().twin()) {
-    outgoingHalfedges_between_heB_heA.insert(he);
+  Halfedge heANext = heA.next();
+  Halfedge heAPrev = heA.prevOrbitFace();
+  Halfedge heBT = heB.twin();
+  Halfedge heBTNext = heBT.next();
+  Halfedge heBTPrev = heBT.prevOrbitFace();
+
+  Face fA = heA.face();
+  Face fB = heBT.face();
+
+  std::set<Halfedge> outgoingHalfedges_between_heA_heB;
+  for (Halfedge he = heA.next().next().twin(); he != heB; he = he.next().next().twin()) {
+    outgoingHalfedges_between_heA_heB.insert(he);
   }
 
   Vertex vNew = getNewVertex();
-  Halfedge heNewA = getNewEdgeTriple(false);
-  Halfedge heNewB = getNewEdgeTriple(false);
-  Halfedge heNewC = getNewEdgeTriple(false);
-  Halfedge heNewAT = heNewA.twin();
-  Halfedge heNewBT = heNewB.twin();
-  Halfedge heNewCT = heNewC.twin();
-  Face fNewA = getNewFace();
-  Face fNewB = getNewFace();
+  Halfedge heNewP = getNewEdgeTriple(false);    // From vNew to heA.tipVertex()
+  Halfedge heNewQ = getNewEdgeTriple(false);    // From vNew to heB.tipVertex()
+  Halfedge heNewR = getNewEdgeTriple(false);    // From v to vNew
+  Halfedge heNewPT = heNewP.twin();
+  Halfedge heNewQT = heNewQ.twin();
+  Halfedge heNewRT = heNewR.twin();
+  Face fNewX = getNewFace();                    // Adjacent to heNewPT
+  Face fNewY = getNewFace();                    // Adjacent to heNewQ
 
-  // Pointers for new elements:
-  heNextArr  [heNewA .getIndex()] = heAT.getIndex();
-  heVertexArr[heNewA .getIndex()] = vNew.getIndex();
-  heFaceArr  [heNewA .getIndex()] = fNewA.getIndex();
-  heNextArr  [heNewAT.getIndex()] = heATNext.getIndex();
-  heVertexArr[heNewAT.getIndex()] = heAT.vertex().getIndex();
-  heFaceArr  [heNewAT.getIndex()] = fA.getIndex();
+  // Careful! The update operation is slighly different depending on whether heBT & heA are consecutive or not
+  if (fA == fB) {
+    assert(heANext == heBTPrev);
+    assert(heAPrev == heBT);
+    assert(heA == heBTNext);
+    assert(outgoingHalfedges_between_heA_heB.empty());
 
-  heNextArr  [heNewB .getIndex()] = heNewCT.getIndex();
-  heVertexArr[heNewB .getIndex()] = heBNext.vertex().getIndex();
-  heFaceArr  [heNewB .getIndex()] = fNewB.getIndex();
-  heNextArr  [heNewBT.getIndex()] = heBNext.getIndex();
-  heVertexArr[heNewBT.getIndex()] = vNew.getIndex();
-  heFaceArr  [heNewBT.getIndex()] = fB.getIndex();
+    // Set pointers for new elements:
+    heNextArr  [heNewP .getIndex()] = heANext.getIndex();
+    heVertexArr[heNewP .getIndex()] = vNew.getIndex();
+    heFaceArr  [heNewP .getIndex()] = fA.getIndex();
+    heNextArr  [heNewPT.getIndex()] = heNewRT.getIndex();
+    heVertexArr[heNewPT.getIndex()] = vA.getIndex();
+    heFaceArr  [heNewPT.getIndex()] = fNewX.getIndex();
 
-  heNextArr  [heNewC .getIndex()] = heNewA.getIndex();
-  heVertexArr[heNewC .getIndex()] = v.getIndex();
-  heFaceArr  [heNewC .getIndex()] = fNewA.getIndex();
-  heNextArr  [heNewCT.getIndex()] = heB.getIndex();
-  heVertexArr[heNewCT.getIndex()] = vNew.getIndex();
-  heFaceArr  [heNewCT.getIndex()] = fNewB.getIndex();
+    heNextArr  [heNewQ .getIndex()] = heAPrev.getIndex();
+    heVertexArr[heNewQ .getIndex()] = vNew.getIndex();
+    heFaceArr  [heNewQ .getIndex()] = fNewY.getIndex();
+    heNextArr  [heNewQT.getIndex()] = heNewP.getIndex();
+    heVertexArr[heNewQT.getIndex()] = vB.getIndex();
+    heFaceArr  [heNewQT.getIndex()] = fA.getIndex();
 
-  vHalfedgeArr[vNew.getIndex()] = heNewCT.getIndex();
-  fHalfedgeArr[fNewA.getIndex()] = heNewA.getIndex();
-  fHalfedgeArr[fNewB.getIndex()] = heNewB.getIndex();
+    heNextArr  [heNewR .getIndex()] = heNewQ.getIndex();
+    heVertexArr[heNewR .getIndex()] = v.getIndex();
+    heFaceArr  [heNewR .getIndex()] = fNewY.getIndex();
+    heNextArr  [heNewRT.getIndex()] = heA.getIndex();
+    heVertexArr[heNewRT.getIndex()] = vNew.getIndex();
+    heFaceArr  [heNewRT.getIndex()] = fNewX.getIndex();
 
-  // Pointer updates for existing elements:
-  heNextArr[heAT.getIndex()] = heNewC.getIndex();
-  heFaceArr[heAT.getIndex()] = fNewA.getIndex();
+    vHalfedgeArr[vNew.getIndex()] = heNewRT.getIndex();
 
-  heNextArr[heB.getIndex()] = heNewB.getIndex();
-  heFaceArr[heB.getIndex()] = fNewB.getIndex();
+    fHalfedgeArr[fNewX.getIndex()] = heNewRT.getIndex();
+    fHalfedgeArr[fNewY.getIndex()] = heNewR.getIndex();
 
-  for (Halfedge he : outgoingHalfedges_between_heB_heA)
-    heVertexArr[he.getIndex()] = vNew.getIndex();
+    // Pointer updates for existing elements:
+    heNextArr[heA.getIndex()] = heNewPT.getIndex();
+    heFaceArr[heA.getIndex()] = fNewX.getIndex();
 
-  vHalfedgeArr[v.getIndex()] = heA.getIndex();
-  fHalfedgeArr[fA.getIndex()] = heNewAT.getIndex();
-  fHalfedgeArr[fB.getIndex()] = heNewBT.getIndex();
+    heNextArr[heAPrev.getIndex()] = heNewR.getIndex();
+    heFaceArr[heAPrev.getIndex()] = fNewY.getIndex();
+
+    heNextArr[heANext.getIndex()] = heNewQT.getIndex();
+
+    vHalfedgeArr[v.getIndex()] = heNewR.getIndex();
+    fHalfedgeArr[fA.getIndex()] = heNewP.getIndex();
+
+  } else {
+
+    // Set pointers for new elements:
+    heNextArr  [heNewP .getIndex()] = heANext.getIndex();
+    heVertexArr[heNewP .getIndex()] = vNew.getIndex();
+    heFaceArr  [heNewP .getIndex()] = fA.getIndex();
+    heNextArr  [heNewPT.getIndex()] = heNewRT.getIndex();
+    heVertexArr[heNewPT.getIndex()] = vA.getIndex();
+    heFaceArr  [heNewPT.getIndex()] = fNewX.getIndex();
+
+    heNextArr  [heNewQ .getIndex()] = heBT.getIndex();
+    heVertexArr[heNewQ .getIndex()] = vNew.getIndex();
+    heFaceArr  [heNewQ .getIndex()] = fNewY.getIndex();
+    heNextArr  [heNewQT.getIndex()] = heBTNext.getIndex();
+    heVertexArr[heNewQT.getIndex()] = vB.getIndex();
+    heFaceArr  [heNewQT.getIndex()] = fB.getIndex();
+
+    heNextArr  [heNewR .getIndex()] = heNewQ.getIndex();
+    heVertexArr[heNewR .getIndex()] = v.getIndex();
+    heFaceArr  [heNewR .getIndex()] = fNewY.getIndex();
+    heNextArr  [heNewRT.getIndex()] = heA.getIndex();
+    heVertexArr[heNewRT.getIndex()] = vNew.getIndex();
+    heFaceArr  [heNewRT.getIndex()] = fNewX.getIndex();
+
+    vHalfedgeArr[vNew.getIndex()] = heNewRT.getIndex();
+
+    fHalfedgeArr[fNewX.getIndex()] = heNewRT.getIndex();
+    fHalfedgeArr[fNewY.getIndex()] = heNewR.getIndex();
+
+    // Pointer updates for existing elements:
+    heNextArr[heA.getIndex()] = heNewPT.getIndex();
+    heFaceArr[heA.getIndex()] = fNewX.getIndex();
+
+    heNextArr[heBT.getIndex()] = heNewR.getIndex();
+    heFaceArr[heBT.getIndex()] = fNewY.getIndex();
+
+    heNextArr[heAPrev.getIndex()] = heNewP.getIndex();
+
+    heNextArr[heBTPrev.getIndex()] = heNewQT.getIndex();
+
+    for (Halfedge he : outgoingHalfedges_between_heA_heB)
+      heVertexArr[he.getIndex()] = vNew.getIndex();
+
+    vHalfedgeArr[v.getIndex()] = heNewR.getIndex();
+    fHalfedgeArr[fA.getIndex()] = heNewP.getIndex();
+    fHalfedgeArr[fB.getIndex()] = heNewQT.getIndex();
+  }
 
   modificationTick++;
 
   // validateConnectivity();
 
-  return heNewC;
+  return heNewR;
 }
 
 bool ManifoldSurfaceMesh::removeFaceAlongBoundary(Face f) {

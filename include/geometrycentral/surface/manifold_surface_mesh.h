@@ -70,10 +70,11 @@ public:
   // Returns {he.prev.twin, he.twin.next}, the two outgoing halfedges from the collapsed vertex.
   std::tuple<Halfedge, Halfedge> collapseInteriorEdge(Halfedge he);
 
-  // Reverse of collapseInteriorEdge: given {heA, heB} outgoing from a common non-boundary vertex, create a new vertex to the left of heB,
-  // then create a pair of triangles formed by the original vertex, the new vertex, and the tip of each of {heA, heB}.
+  // Reverse of collapseInteriorEdge: given {heA, heB} outgoing from a common non-boundary vertex, create a new vertex to
+  // the left of heA and to the right of heB, then create a pair of triangles formed by the original vertex, the new vertex,
+  // and the tip of each of {heA, heB}.
   // Returns halfedge pointing from the existing vertex to the new vertex.
-  // The new vertex's halfedge is set to the twin of the returned halfedge.
+  // The existing vertex and the new vertex's halfedges are set to the returned halfedge and the twin of the returned halfedge, respectively.
   Halfedge splitVertexAlongTwoEdges(Halfedge heA, Halfedge heB);
 
   // Removes a vertex, leaving a high-degree face. If the input is a boundary vertex, preserves an edge along the
