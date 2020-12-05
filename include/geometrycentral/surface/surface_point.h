@@ -2,6 +2,7 @@
 
 #include "geometrycentral/surface/surface_mesh.h"
 #include "geometrycentral/utilities/vector3.h"
+#include "geometrycentral/utilities/combining_hash_functions.h"
 
 #include <iostream>
 #include <limits>

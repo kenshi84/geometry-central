@@ -345,10 +345,23 @@ inline Face sharedFace(const SurfacePoint& pA, const SurfacePoint& pB) {
 } // namespace geometrycentral
 
 namespace std {
+
 inline std::string to_string(geometrycentral::surface::SurfacePoint p) {
   ostringstream output;
   output << p;
   return output.str();
 }
-} // namespace std
 
+template <> struct hash<geometrycentral::surface::SurfacePoint> {
+  size_t operator()(const geometrycentral::surface::SurfacePoint& sp) const {
+    size_t seed = 0;
+    hash_combine(seed, sp.vertex);
+    hash_combine(seed, sp.edge);
+    hash_combine(seed, sp.face);
+    hash_combine(seed, sp.tEdge);
+    hash_combine(seed, sp.faceCoords);
+    return seed;
+  }
+};
+
+} // namespace std
