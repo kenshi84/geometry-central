@@ -949,6 +949,13 @@ bool SignpostIntrinsicTriangulation::relocateInsertedVertex(Vertex v, SurfacePoi
   return true;
 }
 
+Halfedge SignpostIntrinsicTriangulation::switchHalfedgeSides(Edge e) {
+  Halfedge he = intrinsicMesh->switchHalfedgeSides(e);
+  updateAngleFromCWNeighor(e.halfedge());
+  updateAngleFromCWNeighor(e.halfedge().twin());
+  return he;
+}
+
 Halfedge SignpostIntrinsicTriangulation::splitEdge(Halfedge he, double tSplit) {
   return insertVertex_edge(SurfacePoint(he, tSplit));
 }

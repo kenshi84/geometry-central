@@ -174,6 +174,9 @@ public:
   // With checkOnly==true, only perform the validity check and quit without actually performing the relocation
   bool relocateInsertedVertex(Vertex v, SurfacePoint pointOnIntrinsic, bool checkOnly = false);
 
+  // Calls ManifoldSurfaceMesh::switchHalfedgeSides, then updates halfedge directions
+  Halfedge switchHalfedgeSides(Edge e);
+
   // Split a halfedge
   Halfedge splitEdge(Halfedge he, double tSplit);
 
