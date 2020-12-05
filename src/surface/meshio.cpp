@@ -28,6 +28,18 @@ void processLoadedMesh(SimplePolygonMesh& mesh, std::string type) {
   }
 }
 
+std::unique_ptr<CornerData<Vector2>> makeTexCoords(const std::vector<std::vector<Vector2>>& paramCoordinates, SurfaceMesh& mesh) {
+  std::unique_ptr<CornerData<Vector2>> texCoords;
+  if (!paramCoordinates.empty()) {
+    texCoords.reset(new CornerData<Vector2>(mesh));
+    for (Face f : mesh.faces()) {
+      int i = 0;
+      for (Corner c : f.adjacentCorners())
+        (*texCoords)[c] = paramCoordinates[f.getIndex()][i++];
+    }
+  }
+  return texCoords;
+}
 
 std::vector<Vector3> geometryToStdVector(SurfaceMesh& mesh, EmbeddedGeometryInterface& geometry) {
   geometry.requireVertexPositions();
@@ -56,46 +68,62 @@ std::vector<std::vector<Vector2>> paramToStdVector(SurfaceMesh& mesh, CornerData
 
 } // namespace
 
-std::tuple<std::unique_ptr<ManifoldSurfaceMesh>, std::unique_ptr<VertexPositionGeometry>> loadMesh(std::string filename,
-                                                                                                   std::string type) {
+std::tuple<std::unique_ptr<ManifoldSurfaceMesh>, std::unique_ptr<VertexPositionGeometry>, std::unique_ptr<CornerData<Vector2>>>
+loadMesh(std::string filename, std::string type) {
   return readManifoldSurfaceMesh(filename, type);
 }
 
 
 // Load a general surface mesh, which might or might not be manifold
-std::tuple<std::unique_ptr<SurfaceMesh>, std::unique_ptr<VertexPositionGeometry>> readSurfaceMesh(std::string filename,
-                                                                                                  std::string type) {
+std::tuple<std::unique_ptr<SurfaceMesh>, std::unique_ptr<VertexPositionGeometry>, std::unique_ptr<CornerData<Vector2>>>
+readSurfaceMesh(std::string filename, std::string type) {
   std::string loadType;
   SimplePolygonMesh simpleMesh;
   simpleMesh.readMeshFromFile(filename, type, loadType);
   processLoadedMesh(simpleMesh, loadType);
-  return makeSurfaceMeshAndGeometry(simpleMesh.polygons, simpleMesh.vertexCoordinates);
+  std::unique_ptr<SurfaceMesh> mesh;
+  std::unique_ptr<VertexPositionGeometry> geometry;
+  std::tie(mesh, geometry) = makeSurfaceMeshAndGeometry(simpleMesh.polygons, simpleMesh.vertexCoordinates);
+  std::unique_ptr<CornerData<Vector2>> texCoords = makeTexCoords(simpleMesh.paramCoordinates, *mesh);
+  return std::make_tuple(std::move(mesh), std::move(geometry), std::move(texCoords));
 }
-std::tuple<std::unique_ptr<SurfaceMesh>, std::unique_ptr<VertexPositionGeometry>> readSurfaceMesh(std::istream& in,
-                                                                                                  std::string type) {
+std::tuple<std::unique_ptr<SurfaceMesh>, std::unique_ptr<VertexPositionGeometry>, std::unique_ptr<CornerData<Vector2>>>
+readSurfaceMesh(std::istream& in, std::string type) {
   std::string loadType = type;
   SimplePolygonMesh simpleMesh;
   simpleMesh.readMeshFromFile(in, type);
   processLoadedMesh(simpleMesh, loadType);
-  return makeSurfaceMeshAndGeometry(simpleMesh.polygons, simpleMesh.vertexCoordinates);
+  std::unique_ptr<SurfaceMesh> mesh;
+  std::unique_ptr<VertexPositionGeometry> geometry;
+  std::tie(mesh, geometry) = makeSurfaceMeshAndGeometry(simpleMesh.polygons, simpleMesh.vertexCoordinates);
+  std::unique_ptr<CornerData<Vector2>> texCoords = makeTexCoords(simpleMesh.paramCoordinates, *mesh);
+  return std::make_tuple(std::move(mesh), std::move(geometry), std::move(texCoords));
 }
 
 // Load a manifold surface mesh; an exception will by thrown if the mesh is not manifold.
-std::tuple<std::unique_ptr<ManifoldSurfaceMesh>, std::unique_ptr<VertexPositionGeometry>>
+std::tuple<std::unique_ptr<ManifoldSurfaceMesh>, std::unique_ptr<VertexPositionGeometry>, std::unique_ptr<CornerData<Vector2>>>
 readManifoldSurfaceMesh(std::string filename, std::string type) {
   std::string loadType;
   SimplePolygonMesh simpleMesh;
   simpleMesh.readMeshFromFile(filename, type, loadType);
   processLoadedMesh(simpleMesh, loadType);
-  return makeManifoldSurfaceMeshAndGeometry(simpleMesh.polygons, simpleMesh.vertexCoordinates);
+  std::unique_ptr<ManifoldSurfaceMesh> mesh;
+  std::unique_ptr<VertexPositionGeometry> geometry;
+  std::tie(mesh, geometry) = makeManifoldSurfaceMeshAndGeometry(simpleMesh.polygons, simpleMesh.vertexCoordinates);
+  std::unique_ptr<CornerData<Vector2>> texCoords = makeTexCoords(simpleMesh.paramCoordinates, *mesh);
+  return std::make_tuple(std::move(mesh), std::move(geometry), std::move(texCoords));
 }
-std::tuple<std::unique_ptr<ManifoldSurfaceMesh>, std::unique_ptr<VertexPositionGeometry>>
+std::tuple<std::unique_ptr<ManifoldSurfaceMesh>, std::unique_ptr<VertexPositionGeometry>, std::unique_ptr<CornerData<Vector2>>>
 readManifoldSurfaceMesh(std::istream& in, std::string type) {
   std::string loadType = type;
   SimplePolygonMesh simpleMesh;
   simpleMesh.readMeshFromFile(in, type);
   processLoadedMesh(simpleMesh, loadType);
-  return makeManifoldSurfaceMeshAndGeometry(simpleMesh.polygons, simpleMesh.vertexCoordinates);
+  std::unique_ptr<ManifoldSurfaceMesh> mesh;
+  std::unique_ptr<VertexPositionGeometry> geometry;
+  std::tie(mesh, geometry) = makeManifoldSurfaceMeshAndGeometry(simpleMesh.polygons, simpleMesh.vertexCoordinates);
+  std::unique_ptr<CornerData<Vector2>> texCoords = makeTexCoords(simpleMesh.paramCoordinates, *mesh);
+  return std::make_tuple(std::move(mesh), std::move(geometry), std::move(texCoords));
 }
 
 

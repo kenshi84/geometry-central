@@ -15,20 +15,20 @@ namespace surface {
 // Specify a type like "ply" or "obj", if no type is specified, attempts to infer from extension.
 
 // Load a general surface mesh, which might or might not be manifold
-std::tuple<std::unique_ptr<SurfaceMesh>, std::unique_ptr<VertexPositionGeometry>>
+std::tuple<std::unique_ptr<SurfaceMesh>, std::unique_ptr<VertexPositionGeometry>, std::unique_ptr<CornerData<Vector2>>>
 readSurfaceMesh(std::string filename, std::string type = "");
-std::tuple<std::unique_ptr<SurfaceMesh>, std::unique_ptr<VertexPositionGeometry>> readSurfaceMesh(std::istream& in,
-                                                                                                  std::string type);
+std::tuple<std::unique_ptr<SurfaceMesh>, std::unique_ptr<VertexPositionGeometry>, std::unique_ptr<CornerData<Vector2>>>
+readSurfaceMesh(std::istream& in, std::string type);
 
 // Load a manifold surface mesh; an exception will by thrown if the mesh is not manifold.
-std::tuple<std::unique_ptr<ManifoldSurfaceMesh>, std::unique_ptr<VertexPositionGeometry>>
+std::tuple<std::unique_ptr<ManifoldSurfaceMesh>, std::unique_ptr<VertexPositionGeometry>, std::unique_ptr<CornerData<Vector2>>>
 readManifoldSurfaceMesh(std::string filename, std::string type = "");
-std::tuple<std::unique_ptr<ManifoldSurfaceMesh>, std::unique_ptr<VertexPositionGeometry>>
+std::tuple<std::unique_ptr<ManifoldSurfaceMesh>, std::unique_ptr<VertexPositionGeometry>, std::unique_ptr<CornerData<Vector2>>>
 readManifoldSurfaceMesh(std::istream& in, std::string type);
 
 
 // Legacy method, prefer one of the variants above
-std::tuple<std::unique_ptr<ManifoldSurfaceMesh>, std::unique_ptr<VertexPositionGeometry>>
+std::tuple<std::unique_ptr<ManifoldSurfaceMesh>, std::unique_ptr<VertexPositionGeometry>, std::unique_ptr<CornerData<Vector2>>>
 loadMesh(std::string filename, std::string type = "");
 
 
