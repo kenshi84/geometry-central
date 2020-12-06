@@ -7,6 +7,8 @@ inline double SignpostIntrinsicTriangulation::standardizeAngle(Vertex vert, doub
     // can't wrap around at vertices
     return angle;
   }
+  while (angle < 0)
+    angle += intrinsicVertexAngleSums[vert];
   return std::fmod(angle, intrinsicVertexAngleSums[vert]);
 }
 

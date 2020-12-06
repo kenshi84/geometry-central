@@ -869,7 +869,7 @@ Halfedge SignpostIntrinsicTriangulation::splitVertexAlongTwoEdges(Halfedge heA, 
     for (int i = 0; i < 3; ++i)
       halfedgeVectorInface += faceCoords[i] * vertexCoordinatesInTriangle[i];
 
-    intrinsicHalfedgeDirections[heNewT] = halfedgeVectorInface.arg();
+    intrinsicHalfedgeDirections[heNewT] = standardizeAngle(vNew, halfedgeVectorInface.arg());
   }
   halfedgeVectorsInVertex[heNewT] = halfedgeVector(heNewT);
 
