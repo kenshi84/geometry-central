@@ -166,7 +166,7 @@ SurfacePoint SignpostIntrinsicTriangulation::equivalentPointOnIntrinsic(SurfaceP
 
   // If edge on inputMesh is preserved, simply return it. Otherwise treat it as a face point.
   if (pointOnInput.type == SurfacePointType::Edge) {
-    if (isEdgeOriginal(pointOnInput.edge)) {
+    if (isIntrinsicEdgeOriginal(pointOnInput.edge)) {
       return SurfacePoint(intrinsicMesh->edge(pointOnInput.edge.getIndex()), pointOnInput.tEdge);
     }
     pointOnInput = pointOnInput.inSomeFace();
@@ -221,7 +221,7 @@ SurfacePoint SignpostIntrinsicTriangulation::equivalentPointOnInput(SurfacePoint
 
   // If intrinsicMesh edge is preserved, simply return it. Otherwise treat it as a face point.
   if (pointOnIntrinsic.type == SurfacePointType::Edge) {
-    if (isEdgeOriginal(pointOnIntrinsic.edge)) {
+    if (isIntrinsicEdgeOriginal(pointOnIntrinsic.edge)) {
       return SurfacePoint(inputMesh.edge(pointOnIntrinsic.edge.getIndex()), pointOnIntrinsic.tEdge);
     }
     pointOnIntrinsic = pointOnIntrinsic.inSomeFace();
@@ -269,7 +269,7 @@ SurfacePoint SignpostIntrinsicTriangulation::equivalentPointOnInput(SurfacePoint
 std::vector<SurfacePoint> SignpostIntrinsicTriangulation::traceHalfedge(Halfedge he, bool trimEnd) {
 
   // Optimization: don't both tracing original edges, just report them directly
-  if (isEdgeOriginal(he.edge())) {
+  if (isIntrinsicEdgeOriginal(he.edge())) {
     Vertex vA = vertexLocations[he.vertex()].vertex;
     Vertex vB = vertexLocations[he.twin().vertex()].vertex;
     std::vector<SurfacePoint> result{SurfacePoint(vA), SurfacePoint(vB)};
@@ -337,17 +337,31 @@ bool SignpostIntrinsicTriangulation::isDelaunay() {
   return true;
 }
 
-bool SignpostIntrinsicTriangulation::isEdgeOriginal(Edge intrinsic_e, Edge* input_e_ptr) {
-  SurfacePoint sp0 = vertexLocations[intrinsic_e.halfedge().vertex()];
-  SurfacePoint sp1 = vertexLocations[intrinsic_e.halfedge().twin().vertex()];
+bool SignpostIntrinsicTriangulation::isIntrinsicEdgeOriginal(Edge eIntrinsic, Edge* eInput_ptr) const {
+  SurfacePoint sp0 = vertexLocations[eIntrinsic.halfedge().vertex()];
+  SurfacePoint sp1 = vertexLocations[eIntrinsic.halfedge().twin().vertex()];
 
   if (sp0.type != SurfacePointType::Vertex) return false;
   if (sp1.type != SurfacePointType::Vertex) return false;
 
-  Edge input_e = sp0.vertex.connectingEdge(sp1.vertex);
-  if (input_e.getMesh()) {
-    if (input_e_ptr)
-      *input_e_ptr = input_e;
+  Edge eInput = sp0.vertex.connectingEdge(sp1.vertex);
+  if (eInput.getMesh()) {
+    if (eInput_ptr)
+      *eInput_ptr = eInput;
+    return true;
+  }
+  return false;
+}
+
+bool SignpostIntrinsicTriangulation::isInputEdgePreserved(Edge eInput, Edge* eIntrinsic_ptr) const {
+  Vertex vInput0 = eInput.halfedge().vertex();
+  Vertex vInput1 = eInput.halfedge().tipVertex();
+  Vertex vIntrinsic0 = intrinsicMesh->vertex(vInput0.getIndex());
+  Vertex vIntrinsic1 = intrinsicMesh->vertex(vInput1.getIndex());
+  Edge eIntrinsic = vIntrinsic0.connectingEdge(vIntrinsic1);
+  if (eIntrinsic.getMesh()) {
+    if (eIntrinsic_ptr)
+      *eIntrinsic_ptr = eIntrinsic;
     return true;
   }
   return false;
