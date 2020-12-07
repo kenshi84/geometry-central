@@ -354,6 +354,9 @@ bool SignpostIntrinsicTriangulation::isIntrinsicEdgeOriginal(Edge eIntrinsic, Ed
 }
 
 bool SignpostIntrinsicTriangulation::isInputEdgePreserved(Edge eInput, Edge* eIntrinsic_ptr) const {
+  if (eInput.getMesh() != &inputMesh)
+    throw std::logic_error("eInput is pointed to wrong mesh");
+
   Vertex vInput0 = eInput.halfedge().vertex();
   Vertex vInput1 = eInput.halfedge().tipVertex();
   Vertex vIntrinsic0 = intrinsicMesh->vertex(vInput0.getIndex());
