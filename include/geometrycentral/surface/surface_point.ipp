@@ -28,6 +28,15 @@ void SurfacePoint::serialize(Archive& ar) {
   }
 }
 
+inline SurfaceMesh* SurfacePoint::getMesh() const {
+  if (type == SurfacePointType::Vertex)
+    return vertex.getMesh();
+  else if (type == SurfacePointType::Edge)
+    return edge.getMesh();
+  else
+    return face.getMesh();
+}
+
 inline void SurfacePoint::setMesh(SurfaceMesh* mesh) {
   if (type == SurfacePointType::Vertex)
     vertex.setMesh(mesh);

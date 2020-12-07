@@ -45,6 +45,8 @@ struct SurfacePoint {
   template <class Archive>
   void serialize(Archive& ar);
 
+  inline SurfaceMesh* getMesh() const;
+
   // This needs to be called after being deserialized
   inline void setMesh(SurfaceMesh* mesh);
 
