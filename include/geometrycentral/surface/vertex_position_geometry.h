@@ -48,6 +48,7 @@ public:
   double edgeCotanWeight(Edge e) const;
   Vector3 faceNormal(Face f) const;
 
+  Vector3 halfedgeVector(Halfedge he) const;
 
 protected:
   // Override the compute vertex positions method for embedded geometry

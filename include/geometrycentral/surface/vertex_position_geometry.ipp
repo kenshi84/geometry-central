@@ -116,5 +116,9 @@ inline Vector3 VertexPositionGeometry::faceNormal(Face f) const {
   return normal;
 }
 
+inline Vector3 VertexPositionGeometry::halfedgeVector(Halfedge he) const {
+  return inputVertexPositions[he.tipVertex()] - inputVertexPositions[he.vertex()];
+}
+
 } // namespace surface
 } // namespace geometrycentral
