@@ -180,25 +180,33 @@ inline SurfacePoint SurfacePoint::inFace(Face targetFace) const {
 }
 
 
-inline Vertex SurfacePoint::nearestVertex() const {
+inline Vertex SurfacePoint::nearestVertex(double* delta) const {
 
   switch (type) {
   case SurfacePointType::Vertex: {
+    if (delta) *delta = 0.;
     return vertex;
     break;
   }
   case SurfacePointType::Edge: {
-    if (tEdge < .5) return edge.halfedge().vertex();
+    if (tEdge < .5) {
+      if (delta) *delta = tEdge;
+      return edge.halfedge().vertex();
+    }
+    if (delta) *delta = 1. - tEdge;
     return edge.halfedge().twin().vertex();
     break;
   }
   case SurfacePointType::Face: {
     if (faceCoords.x >= faceCoords.y && faceCoords.x >= faceCoords.z) {
+      if (delta) *delta = norm(Vector3{1., 0., 0.} - faceCoords);
       return face.halfedge().vertex();
     }
     if (faceCoords.y >= faceCoords.x && faceCoords.y >= faceCoords.z) {
+      if (delta) *delta = norm(Vector3{0., 1., 0.} - faceCoords);
       return face.halfedge().next().vertex();
     }
+    if (delta) *delta = norm(Vector3{0., 0., 1.} - faceCoords);
     return face.halfedge().next().next().vertex();
     break;
   }

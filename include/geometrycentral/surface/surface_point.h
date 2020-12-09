@@ -62,7 +62,11 @@ struct SurfacePoint {
   inline SurfacePoint inFace(Face f) const;
 
   // Return the nearest vertex to this surface point
-  inline Vertex nearestVertex() const;
+  // When delta is present, return the magnitude of change:
+  //    vertex point -> 0
+  //    edge point -> tEdge or 1 - tEdge
+  //    face point -> norm(SurfacePoint(result).inFace(this->face).faceCoords - this->faceCoords)
+  inline Vertex nearestVertex(double* delta = nullptr) const;
 
   // Return the equivalent surface point in the 'reduced' form (can be seen as the inverse of inSomeFace).
   // An edge point may be reduced to a vertex point, and a face point may be reduced to an edge point or a vertex point.
