@@ -687,7 +687,7 @@ TraceGeodesicResult traceGeodesic(const IntrinsicGeometryInterface& geom, Surfac
     result.pathPoints.push_back(startP);
   }
 
-  if (TRACE_PRINT) cout << "\n>>> Trace query from " << startP << " vec = " << traceVec << endl;
+  if (TRACE_PRINT) cout << "\n..> Trace query from " << startP << " vec = " << traceVec << endl;
 
   // Quick out with a zero vector
   if (traceVec.norm2() == 0) {
@@ -741,7 +741,7 @@ TraceGeodesicResult traceGeodesic(const IntrinsicGeometryInterface& geom, Face s
   }
 
   if (TRACE_PRINT) {
-    cout << "\n>>> Trace query (barycentric) from " << startFace << " " << startBary << " vec = " << traceBaryVec
+    cout << "\n..> Trace query (barycentric) from " << startFace << " " << startBary << " vec = " << traceBaryVec
          << endl;
   }
 
