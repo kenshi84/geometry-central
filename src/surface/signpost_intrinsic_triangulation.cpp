@@ -903,6 +903,8 @@ Halfedge SignpostIntrinsicTriangulation::splitVertexAlongTwoEdges(Halfedge heA, 
 }
 
 bool SignpostIntrinsicTriangulation::relocateInsertedVertex(Vertex v, SurfacePoint pointOnIntrinsic, bool checkOnly) {
+  assert(pointOnIntrinsic.getMesh() == intrinsicMesh.get());
+
   if (vertexLocations[v].type == SurfacePointType::Vertex) return false; // can't relocate original vertices
   assert(pointOnIntrinsic.type == SurfacePointType::Face);
 
