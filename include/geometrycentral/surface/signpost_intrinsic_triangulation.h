@@ -61,8 +61,8 @@ public:
   // (set to an array which holds true if an edge is fixed, and should not be flipped)
   // A callback is automatically registered which will update this array as edge splits are performed, so if a marked
   // edge is split the two resulting edges will be marked.
-  EdgeData<char> markedEdges;
-  void setMarkedEdges(const EdgeData<char>& markedEdges);
+  EdgeData<bool> markedEdges;
+  void setMarkedEdges(const EdgeData<bool>& markedEdges);
 
 
   // ======================================================
