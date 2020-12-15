@@ -75,7 +75,7 @@ public:
 Index parseFaceIndex(const std::string& token) {
   std::stringstream in(token);
   std::string indexString;
-  int indices[3] = {1, 1, 1};
+  int indices[3] = {0, 0, 0};
 
   int i = 0;
   while (std::getline(in, indexString, '/')) {
