@@ -27,6 +27,13 @@ struct Vector3 {
     return Vector3{nan, nan, nan};
   }
 
+  template <typename T>
+  static Vector3 castFrom(const T& v);
+
+  template <typename T>
+  T castTo() const;
+
+
   // Access-by-index
   double& operator[](int index) { return (&x)[index]; }
   double operator[](int index) const { return (&x)[index]; };
