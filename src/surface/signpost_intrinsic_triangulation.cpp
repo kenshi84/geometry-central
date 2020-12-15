@@ -166,8 +166,14 @@ SurfacePoint SignpostIntrinsicTriangulation::equivalentPointOnIntrinsic(SurfaceP
 
   // If edge on inputMesh is preserved, simply return it. Otherwise treat it as a face point.
   if (pointOnInput.type == SurfacePointType::Edge) {
-    if (isIntrinsicEdgeOriginal(pointOnInput.edge)) {
-      return SurfacePoint(intrinsicMesh->edge(pointOnInput.edge.getIndex()), pointOnInput.tEdge);
+    Edge intrinsicE;
+    if (isInputEdgePreserved(pointOnInput.edge, &intrinsicE)) {
+      if (intrinsicE.halfedge().vertex().getIndex() == pointOnInput.edge.halfedge().vertex().getIndex()) {
+        return SurfacePoint(intrinsicE, pointOnInput.tEdge);
+      } else {
+        assert(intrinsicE.halfedge().tipVertex().getIndex() == pointOnInput.edge.halfedge().vertex().getIndex());
+        return SurfacePoint(intrinsicE, 1. - pointOnInput.tEdge);
+      }
     }
     pointOnInput = pointOnInput.inSomeFace();
   }
