@@ -56,4 +56,17 @@ struct hash<std::pair<T, U>> {
     return hVal;
   }
 };
-}; // namespace std
+
+
+// Hash for arrays
+template <class T, size_t N>
+struct hash<std::array<T, N>> {
+  std::size_t operator()(const std::array<T, N>& x) const {
+    size_t seed = 0;
+    for (size_t i = 0; i < N; ++i)
+      hash_combine<T>(seed, x[i]);
+    return seed;
+  }
+};
+
+} // namespace std
