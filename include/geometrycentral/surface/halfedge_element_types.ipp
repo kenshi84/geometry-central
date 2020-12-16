@@ -32,6 +32,14 @@ inline Vertex::Vertex(SurfaceMesh* mesh_, size_t ind_) : Element(mesh_,ind_) {}
 // Navigators
 inline Halfedge Vertex::halfedge() const    { return Halfedge(mesh, mesh->vHalfedge(ind)); }
 inline Corner Vertex::corner() const        { return halfedge().corner(); }
+inline Edge Vertex::connectingEdge(Vertex vOther) const {
+  for (Edge e : adjacentEdges()) {
+    if (e.otherVertex(*this) == vOther) {
+      return e;
+    }
+  }
+  return Edge();
+}
 inline bool Vertex::isDead() const          { return mesh->vertexIsDead(ind); }
 
 // Properties

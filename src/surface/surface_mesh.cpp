@@ -602,15 +602,6 @@ void SurfaceMesh::copyInternalFields(SurfaceMesh& target) const {
 }
 
 
-Edge SurfaceMesh::connectingEdge(Vertex vA, Vertex vB) {
-  for (Edge e : vA.adjacentEdges()) {
-    if (e.otherVertex(vA) == vB) {
-      return e;
-    }
-  }
-  return Edge();
-}
-
 std::vector<std::vector<size_t>> SurfaceMesh::getFaceVertexList() {
 
   std::vector<std::vector<size_t>> result;
