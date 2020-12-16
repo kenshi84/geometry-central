@@ -40,3 +40,5 @@ tags
 *.exe
 *.out
 *.app
+
+git-*.txt
