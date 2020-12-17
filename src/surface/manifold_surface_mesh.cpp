@@ -1620,6 +1620,125 @@ std::vector<Face> ManifoldSurfaceMesh::triangulate(Face f) {
   return allFaces;
 }
 
+Face ManifoldSurfaceMesh::addTriangleToBoundary(Edge e) {
+  GC_SAFETY_ASSERT(e.isBoundary(), "addTriangleToBoundary(): given edge not on boundary");
+
+  // Collect existing elements
+  Halfedge he = e.halfedge().twin();
+  Halfedge heNext = he.next();
+  Halfedge hePrev = he.prevOrbitVertex();
+  Vertex vA = he.tipVertex();
+  Vertex vB = he.vertex();
+
+  // Create new elements
+  Halfedge heNewA = getNewEdgeTriple(true);
+  Halfedge heNewB = getNewEdgeTriple(true);
+  Halfedge heNewAT = heNewA.twin();     // This lives on the boundary
+  Halfedge heNewBT = heNewB.twin();     // This lives on the boundary
+  Vertex vNew = getNewVertex();
+  Face fNew = getNewFace();
+
+  // Boundary loop's index can change due to array resize, so make sure to get pointer *after* resize
+  Face fBoundary = he.face();
+
+  // Connect up all the pointers
+  heNextArr[he.getIndex()] = heNewA.getIndex();
+  heFaceArr[he.getIndex()] = fNew.getIndex();
+
+  heNextArr[hePrev.getIndex()] = heNewBT.getIndex();
+
+  heNextArr[heNewA.getIndex()] = heNewB.getIndex();
+  heFaceArr[heNewA.getIndex()] = fNew.getIndex();
+  heVertexArr[heNewA.getIndex()] = vA.getIndex();
+
+  heNextArr[heNewB.getIndex()] = he.getIndex();
+  heFaceArr[heNewB.getIndex()] = fNew.getIndex();
+  heVertexArr[heNewB.getIndex()] = vNew.getIndex();
+
+  heNextArr[heNewAT.getIndex()] = heNext.getIndex();
+  heFaceArr[heNewAT.getIndex()] = fBoundary.getIndex();
+  heVertexArr[heNewAT.getIndex()] = vNew.getIndex();
+
+  heNextArr[heNewBT.getIndex()] = heNewAT.getIndex();
+  heFaceArr[heNewBT.getIndex()] = fBoundary.getIndex();
+  heVertexArr[heNewBT.getIndex()] = vB.getIndex();
+
+  fHalfedgeArr[fBoundary.getIndex()] = heNewAT.getIndex();
+  fHalfedgeArr[fNew.getIndex()] = he.getIndex();
+
+  vHalfedgeArr[vA.getIndex()] = heNewA.getIndex();
+  vHalfedgeArr[vNew.getIndex()] = heNewB.getIndex();
+
+  nInteriorHalfedgesCount++;
+
+  modificationTick++;
+  return fNew;
+}
+
+Face ManifoldSurfaceMesh::addTriangleToBoundary(Edge eA, Edge eB) {
+  GC_SAFETY_ASSERT(eA.isBoundary() && eB.isBoundary(), "addTriangleToBoundary(): given edge not on boundary");
+
+  // Collect existing elements
+  Halfedge heA = eA.halfedge().twin();
+  Halfedge heB = eB.halfedge().twin();
+  Halfedge heAPrev = heA.prevOrbitVertex();
+  Halfedge heBNext = heB.next();
+  Vertex vA = heA.vertex();
+  Vertex vB = heB.tipVertex();
+
+  GC_SAFETY_ASSERT(heA.next() == heB, "addTriangleToBoundary(): given boundary edges not consecutive");
+
+  // Create new elements
+  Halfedge heNew = getNewEdgeTriple(true);
+  Halfedge heNewT = heNew.twin();     // This lives on the boundary
+  Face fNew = getNewFace();
+
+  // Boundary loop's index can change due to array resize, so make sure to get pointer *after* resize
+  Face fBoundary = heA.face();
+
+  // Connect up all the pointers
+  heNextArr[heAPrev.getIndex()] = heNewT.getIndex();
+
+  heFaceArr[heA.getIndex()] = fNew.getIndex();
+
+  heNextArr[heB.getIndex()] = heNew.getIndex();
+  heFaceArr[heB.getIndex()] = fNew.getIndex();
+
+  heNextArr[heNew.getIndex()] = heA.getIndex();
+  heFaceArr[heNew.getIndex()] = fNew.getIndex();
+  heVertexArr[heNew.getIndex()] = vB.getIndex();
+
+  heNextArr[heNewT.getIndex()] = heBNext.getIndex();
+  heFaceArr[heNewT.getIndex()] = fBoundary.getIndex();
+  heVertexArr[heNewT.getIndex()] = vA.getIndex();
+
+  fHalfedgeArr[fBoundary.getIndex()] = heNewT.getIndex();
+  fHalfedgeArr[fNew.getIndex()] = heNew.getIndex();
+
+  vHalfedgeArr[vB.getIndex()] = heNew.getIndex();
+
+  nInteriorHalfedgesCount += 2;
+
+  modificationTick++;
+  return fNew;
+}
+
+Face ManifoldSurfaceMesh::fillHole(BoundaryLoop bl) {
+  Face f = getNewFace();
+  fHalfedgeArr[f.getIndex()] = bl.halfedge().getIndex();
+
+  for (Halfedge he : bl.adjacentHalfedges())
+    heFaceArr[he.getIndex()] = f.getIndex();
+
+  deleteElement(bl);
+
+  nInteriorHalfedgesCount += 3;
+
+  modificationTick++;
+  return f;
+}
+
+
 
 // All are automatically true on a manifold mesh
 void ManifoldSurfaceMesh::separateNonmanifoldEdges() {}

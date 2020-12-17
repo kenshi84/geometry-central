@@ -85,6 +85,17 @@ public:
   // Triangulate in a face, returns all subfaces
   std::vector<Face> triangulate(Face f);
 
+  // Add a triangle face next to a boundary edge, creating one face, one vertex, and two edges.
+  // The new face's halfedge is set to e.halfedge().twin()
+  Face addTriangleToBoundary(Edge e);
+
+  // Add a triangle face next to a pair of consecutive boundary edges, creating one face and one edge.
+  // The new face's halfedge is set to the newly created one
+  Face addTriangleToBoundary(Edge eA, Edge eB);
+
+  // Fill a hole by replacing the boundary loop with a new face
+  Face fillHole(BoundaryLoop bl);
+
   // Overrides for no-op methods
   void separateNonmanifoldEdges() override;
   VertexData<Vertex> separateNonmanifoldVertices() override;
