@@ -62,7 +62,8 @@ public:
   // Navigators
   Halfedge halfedge() const;
   Corner corner() const;
-  Edge connectingEdge(Vertex vOther) const; // an edge from this to vOther if one exists; Edge() otherwise
+  Halfedge connectingHalfedge(Vertex vOther) const; // a halfedge from this to vOther if one exists; Halfedge() otherwise
+  Edge connectingEdge(Vertex vOther) const; // an edge connecting this and vOther if one exists; Edge() otherwise
   bool isDead() const;
 
   // Properties
