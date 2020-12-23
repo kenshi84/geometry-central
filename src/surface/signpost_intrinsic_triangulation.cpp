@@ -985,7 +985,7 @@ Halfedge SignpostIntrinsicTriangulation::splitEdge(Halfedge he, double tSplit) {
   return insertVertex_edge(SurfacePoint(he, tSplit));
 }
 
-void SignpostIntrinsicTriangulation::flipToDelaunay() {
+void SignpostIntrinsicTriangulation::flipToDelaunay(std::function<bool(Edge)> flippableTest) {
 
   std::deque<Edge> edgesToCheck;
   EdgeData<char> inQueue(mesh, true);
@@ -1000,6 +1000,8 @@ void SignpostIntrinsicTriangulation::flipToDelaunay() {
     Edge e = edgesToCheck.front();
     edgesToCheck.pop_front();
     inQueue[e] = false;
+
+    if (flippableTest && !flippableTest(e)) continue;
 
     bool wasFlipped = flipEdgeIfNotDelaunay(e);
 
