@@ -1627,7 +1627,7 @@ void FlipEdgeNetwork::savePathOBJLine(std::string filenamePrefix, bool withAll) 
 
 bool FlipEdgeNetwork::intrinsicTriIsOriginal() {
   for (Edge e : mesh.edges()) {
-    if (!tri->edgeIsOriginal[e]) {
+    if (!tri->isIntrinsicEdgeOriginal(e)) {
       return false;
     }
   }
