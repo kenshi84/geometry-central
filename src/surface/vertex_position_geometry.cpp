@@ -16,7 +16,7 @@ VertexPositionGeometry::VertexPositionGeometry(SurfaceMesh& mesh_, const VertexD
 
 std::unique_ptr<VertexPositionGeometry> VertexPositionGeometry::copy() { return reinterpretTo(mesh); }
 
-std::unique_ptr<VertexPositionGeometry> VertexPositionGeometry::reinterpretTo(SurfaceMesh& targetMesh) {
+std::unique_ptr<VertexPositionGeometry> VertexPositionGeometry::reinterpretTo(SurfaceMesh& targetMesh) const {
   std::unique_ptr<VertexPositionGeometry> newGeom(new VertexPositionGeometry(targetMesh));
   newGeom->inputVertexPositions = inputVertexPositions.reinterpretTo(targetMesh);
   return newGeom;

@@ -3,6 +3,7 @@
 #include "geometrycentral/surface/embedded_geometry_interface.h"
 #include "geometrycentral/surface/manifold_surface_mesh.h"
 #include "geometrycentral/surface/intrinsic_geometry_interface.h"
+#include "geometrycentral/surface/vertex_position_geometry.h"
 #include "geometrycentral/surface/surface_point.h"
 #include "geometrycentral/utilities/elementary_geometry.h"
 
@@ -94,6 +95,24 @@ public:
 
   // Returns the smallest angle in the intrinsic triangulation, in degrees
   double minAngleDegrees();
+
+  // Returns the largest error between vertexLocations and surface points predicted by geodesic tracing via
+  // intrinsicEdgeLengths/intrinsicHalfedgeDirections. Given an intrinsic edge e, the error is computed as:
+  //    sp1 = traceHalfedge(e.halfedge()).back();
+  //    sp2 = vertexLocations[e.halfedge().tipVertex()];
+  //    error = norm(sp1.interpolate(inputPosGeom.inputVertexPositions) - sp2.interpolate(inputPosGeom.inputVertexPositions)));
+  //
+  // TODO: Eliminate inputPosGeom by calculating error using edge lengths only, which should be possible
+  double maxSignpostError(const VertexPositionGeometry& inputPosGeom, const EdgeData<std::vector<SurfacePoint>>& cachedEdgePaths = {});
+
+  // ======================================================
+  // ======== Sanitizers
+  // ======================================================
+  //
+  // Recalculates intrinsicEdgeLengths/intrinsicHalfedgeDirections from vertexLocations by running the flip-geodesics
+  // algorithm between each edge's endpoints.
+  // After this process, maxSignpostError is expected to be very small (~1.e-8 for a typical area-normalized surface)
+  void sanitizeSignpost(const VertexPositionGeometry& inputPosGeom, const EdgeData<std::vector<SurfacePoint>>& cachedEdgePaths = {});
 
   // ======================================================
   // ======== High-Level Mutators

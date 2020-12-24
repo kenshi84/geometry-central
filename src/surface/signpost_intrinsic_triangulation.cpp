@@ -4,6 +4,7 @@
 #include "geometrycentral/surface/exact_polyhedral_geodesics.h"
 #include "geometrycentral/surface/mesh_graph_algorithms.h"
 #include "geometrycentral/surface/trace_geodesic.h"
+#include "geometrycentral/surface/flip_geodesics.h"
 
 #include <iomanip>
 #include <queue>
@@ -382,6 +383,259 @@ double SignpostIntrinsicTriangulation::minAngleDegrees() {
     minAngle = std::min(minAngle, cornerAngle(c));
   }
   return minAngle * 180. / M_PI;
+}
+
+double SignpostIntrinsicTriangulation::maxSignpostError(const VertexPositionGeometry& inputPosGeom, const EdgeData<std::vector<SurfacePoint>>& cachedEdgePaths) {
+  EdgeData<std::vector<SurfacePoint>> edgePaths = cachedEdgePaths.getMesh() == intrinsicMesh.get() ? cachedEdgePaths : traceEdges();
+  double maxError = 0.;
+  for (Edge e : intrinsicMesh->edges()) {
+     SurfacePoint sp1 = edgePaths[e].back();
+     SurfacePoint sp2 = vertexLocations[e.halfedge().tipVertex()];
+     double error = norm(sp1.interpolate(inputPosGeom.inputVertexPositions) - sp2.interpolate(inputPosGeom.inputVertexPositions));
+     maxError = std::max<double>(error, maxError);
+  }
+  return maxError;
+}
+
+// ======================================================
+// ======== Sanitizers
+// ======================================================
+namespace detail {
+
+std::vector<SurfacePoint> getGeodesicBetweenSurfacePoints(
+  ManifoldSurfaceMesh& inputMesh, const VertexPositionGeometry& inputPosGeom,
+  SurfacePoint startSP, SurfacePoint endSP,
+  const std::vector<SurfacePoint>& oldPath    // For initializing flip-geodesics
+) {
+  if (startSP == endSP)
+    return {startSP};
+
+  const size_t n = oldPath.size();
+  GC_SAFETY_ASSERT(n >= 2, "");
+
+  std::vector<Vertex> oldPathVertices(n);
+
+  // Copy mesh & geometry
+  std::unique_ptr<ManifoldSurfaceMesh> tempMesh = inputMesh.copy();
+  std::unique_ptr<VertexPositionGeometry> tempGeom = inputPosGeom.reinterpretTo(*tempMesh);
+
+  std::map<Vertex, SurfacePoint> tempVertex_to_inputSP;
+
+  // Insert vertex for {edge, face} points
+  auto getGeodesicBetweenSurfacePoints_getTempVertex = [&] (SurfacePoint sp) -> Vertex {
+    if (sp.type == SurfacePointType::Vertex) {
+      Vertex tempV = tempMesh->vertex(sp.vertex.getIndex());
+      tempVertex_to_inputSP[tempV] = sp;
+      return tempV;
+    }
+
+    Vertex tempNewV;
+    if (sp.type == SurfacePointType::Edge) {
+      Edge tempE = tempMesh->edge(sp.edge.getIndex());
+      for (Vertex tempV : tempE.adjacentVertices())
+        tempVertex_to_inputSP[tempV] = SurfacePoint(inputMesh.vertex(tempV.getIndex()));
+
+      tempNewV = tempMesh->splitEdgeTriangular(tempE).vertex();
+
+    } else {
+      Face tempF = tempMesh->face(sp.face.getIndex());
+      for (Vertex tempV : tempF.adjacentVertices())
+        tempVertex_to_inputSP[tempV] = SurfacePoint(inputMesh.vertex(tempV.getIndex()));
+
+      tempNewV = tempMesh->insertVertex(tempF);
+    }
+
+    tempGeom->inputVertexPositions[tempNewV] = sp.interpolate(inputPosGeom.inputVertexPositions);
+    tempVertex_to_inputSP[tempNewV] = sp;
+
+    return tempNewV;
+  };
+  oldPathVertices.front() = getGeodesicBetweenSurfacePoints_getTempVertex(startSP);
+  oldPathVertices.back () = getGeodesicBetweenSurfacePoints_getTempVertex(endSP);
+  for (size_t i = 1; i < n - 1; ++i) {
+    GC_SAFETY_ASSERT(oldPath[i].type == SurfacePointType::Edge, "Interior path point of intrinsic edge shouldn't be a vertex point");
+    oldPathVertices[i] = getGeodesicBetweenSurfacePoints_getTempVertex(oldPath[i]);
+  }
+
+  std::vector<Halfedge> oldPathHalfedges(n - 1);
+  for (size_t i = 0; i < n - 1; ++i) {
+    oldPathHalfedges[i] = oldPathVertices[i].connectingHalfedge(oldPathVertices[i + 1]);
+    GC_SAFETY_ASSERT(oldPathHalfedges[i] != Halfedge(), "");
+  }
+
+  std::unique_ptr<FlipEdgeNetwork> edgeNetwork(new FlipEdgeNetwork(*tempMesh, *tempGeom, {oldPathHalfedges}));
+  edgeNetwork->iterativeShorten();
+  std::vector<SurfacePoint> pathOnTemp = edgeNetwork->getPathPolyline()[0];
+
+  // Convert resulting polyline on temp mesh to that on original mesh
+  std::vector<SurfacePoint> newPath = {startSP};
+  for (size_t i = 1; i < pathOnTemp.size() - 1; ++i) {
+    SurfacePoint tempSP = pathOnTemp[i];
+
+    SurfacePoint sp;
+    if (tempSP.type == SurfacePointType::Vertex) {
+      sp = tempVertex_to_inputSP.at(tempSP.vertex);
+
+    } else {
+      GC_SAFETY_ASSERT(tempSP.type == SurfacePointType::Edge, "");
+
+      // Convert edge point on temp mesh to edge point on input mesh by blending faceCoords
+      Edge tempE = tempSP.edge;
+      SurfacePoint sp0 = tempVertex_to_inputSP.at(tempE.halfedge().vertex());
+      SurfacePoint sp1 = tempVertex_to_inputSP.at(tempE.halfedge().tipVertex());
+      Face inputF = sharedFace(sp0, sp1);
+      GC_SAFETY_ASSERT(inputF != Face(), "");
+
+      sp0 = sp0.inFace(inputF);
+      sp1 = sp1.inFace(inputF);
+      sp = SurfacePoint(inputF, Vector3::zero());
+      sp.faceCoords += (1. - tempSP.tEdge) * sp0.faceCoords + tempSP.tEdge * sp1.faceCoords;
+      sp = sp.reduced();
+    }
+
+    GC_SAFETY_ASSERT(sp.type == SurfacePointType::Edge, "");
+    newPath.push_back(sp);
+  }
+  newPath.push_back(endSP);
+  return newPath;
+}
+
+}
+
+void SignpostIntrinsicTriangulation::sanitizeSignpost(const VertexPositionGeometry& inputPosGeom, const EdgeData<std::vector<SurfacePoint>>& cachedEdgePaths) {
+  EdgeData<std::vector<SurfacePoint>> edgePaths = cachedEdgePaths.getMesh() == intrinsicMesh.get() ? cachedEdgePaths : traceEdges();
+
+  for (Edge e : intrinsicMesh->edges()) {
+    std::array<Halfedge, 2> he = {
+      e.halfedge(),
+      e.halfedge().twin()
+    };
+
+    // Easy case: intrinsic edge is original
+    Edge eInput;
+    if (isIntrinsicEdgeOriginal(e, &eInput)) {
+      // Copy edge length
+      intrinsicEdgeLengths[e] = inputGeom.edgeLengths[eInput];
+
+      std::array<Halfedge, 2> heInput = {
+        eInput.halfedge(),
+        eInput.halfedge().twin()
+      };
+
+      // Make he & heInput consistently ordered
+      if (vertexLocations[he[0].vertex()] != heInput[0].vertex())
+        std::swap(heInput[0], heInput[1]);
+      GC_SAFETY_ASSERT(vertexLocations[he[0].vertex()] == heInput[0].vertex(), "");
+      GC_SAFETY_ASSERT(vertexLocations[he[1].vertex()] == heInput[1].vertex(), "");
+
+      // Copy halfedge direction
+      for (int i = 0; i < 2; ++i) {
+        Vertex vInput = heInput[i].vertex();
+        double angleScaling = inputGeom.vertexAngleSums[vInput] / (vInput.isBoundary() ? M_PI : 2. * M_PI);
+        intrinsicHalfedgeDirections[he[i]] = inputGeom.halfedgeVectorsInVertex[heInput[i]].arg() * angleScaling;
+      }
+      continue;
+    }
+
+    // General case: get geodesic between endpoints
+    SurfacePoint startSP = vertexLocations[he[0].vertex()];
+    SurfacePoint endSP   = vertexLocations[he[1].vertex()];
+    std::vector<SurfacePoint> path = detail::getGeodesicBetweenSurfacePoints(inputMesh, inputPosGeom, startSP, endSP, edgePaths[e]);
+    const size_t n = path.size();
+
+    GC_SAFETY_ASSERT(n >= 2, "Degenerate edge");
+
+    // Update edge length
+    intrinsicEdgeLengths[e] = 0.;
+    Vector3 pPrev;
+    for (size_t i = 0; i < n; ++i) {
+      if (i > 0 && i < n - 1)
+        GC_SAFETY_ASSERT(path[i].type == SurfacePointType::Edge, "All in-between points in edge path are expected to be edge points");
+
+      Vector3 pCurr = path[i].interpolate(inputPosGeom.inputVertexPositions);
+      if (i > 0)
+        intrinsicEdgeLengths[e] += norm(pCurr - pPrev);
+      pPrev = pCurr;
+    }
+
+    // Update direction for both halfedges
+    for (int i = 0; i < 2; ++i) {
+      SurfacePoint sp0 = i == 0 ? path[0] : path[n - 1];
+      SurfacePoint sp1 = i == 0 ? path[1] : path[n - 2];
+
+      // Some sanity checks
+      GC_SAFETY_ASSERT(sp0 == vertexLocations[he[i].vertex()], "");
+      GC_SAFETY_ASSERT(checkAdjacent(sp0, sp1), "");
+      if (sp1.type == SurfacePointType::Edge) {
+        GC_SAFETY_ASSERT(n > 2, "");                                  // sp1 cannot be the other endpoint
+      } else {
+        GC_SAFETY_ASSERT(n == 2, "");
+        if (sp0.type ==SurfacePointType::Vertex)
+          GC_SAFETY_ASSERT(sp1.type == SurfacePointType::Face, "");   // We already know e is not original
+      }
+
+      // Use this face to figure out angles
+      Face fInput = sharedFace(sp0, sp1);
+      GC_SAFETY_ASSERT(fInput != Face(), "");
+
+      // Utility for easily making points in the local 2D coordinate system for fInput
+      const std::array<Vector2, 3> vertCoords = {{
+        {0., 0.},
+        inputGeom.halfedgeVectorsInFace[fInput.halfedge()],
+        -inputGeom.halfedgeVectorsInFace[fInput.halfedge().next().next()]
+      }};
+      auto getPointFromFaceCoords = [&vertCoords](const Vector3& faceCoords) -> Vector2 {
+        Vector2 result = {0., 0.};
+        for (int i = 0; i < 3; ++i)
+          result += faceCoords[i] * vertCoords[i];
+        return result;
+      };
+
+      // Case 1: vertex is original
+      if (sp0.type == SurfacePointType::Vertex) {
+        Vertex vInput = sp0.vertex;
+        // Find outgoing halfedge belonging to fInput, and work out the angle in it
+        for (Halfedge heInput : vInput.outgoingHalfedges()) {
+          if (heInput.face() == fInput) {
+            // Get corner points of a triangle spanned by {vInput, heInput.tipVertex, sp1}
+            Vector2 pA = getPointFromFaceCoords(SurfacePoint(vInput).inFace(fInput).faceCoords);
+            Vector2 pB = getPointFromFaceCoords(SurfacePoint(heInput.tipVertex()).inFace(fInput).faceCoords);
+            Vector2 pC = getPointFromFaceCoords(sp1.inFace(fInput).faceCoords);
+
+            // Compute angle from edge lengths
+            double lAB = norm(pA - pB);
+            double lAC = norm(pA - pC);
+            double lBC = norm(pB - pC);
+            double cos_aCAB = (lAB * lAB + lAC * lAC - lBC * lBC) / (2. * lAB * lAC);
+            cos_aCAB = clamp(cos_aCAB, -1., 1.);
+            double aCAB = std::acos(cos_aCAB);
+
+            // Compute halfedge direction
+            double angleScaling = inputGeom.vertexAngleSums[vInput] / (vInput.isBoundary() ? M_PI : 2. * M_PI);
+            double angleBase = angleScaling * inputGeom.halfedgeVectorsInVertex[heInput].arg();
+            intrinsicHalfedgeDirections[he[i]] = standardizeAngle(he[i].vertex(), aCAB + angleBase);
+            break;
+          }
+        }
+
+      // Case 2: vertex was inserted to an input edge
+      } else if (sp0.type == SurfacePointType::Edge) {
+        throw std::logic_error("Not implemented yet");
+
+      // Case 3: vertex was inserted to an input face
+      } else {
+        GC_SAFETY_ASSERT(sp0.type == SurfacePointType::Face, "");
+
+        // The vector in this local coordinate system is already what we need
+        Vector2 pA = getPointFromFaceCoords(sp0.faceCoords);
+        Vector2 pB = getPointFromFaceCoords(sp1.inFace(fInput).faceCoords);
+
+        intrinsicHalfedgeDirections[he[i]] = standardizeAngle(he[i].vertex(), arg(pB - pA));
+      }
+    }
+  }
+
+  refreshQuantities();
 }
 
 // ======================================================
