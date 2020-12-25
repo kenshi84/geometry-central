@@ -1039,6 +1039,15 @@ Halfedge SignpostIntrinsicTriangulation::splitVertexAlongTwoEdges(Halfedge heA, 
   }
 
   SurfacePoint vNew_positionOnIntrinsic = traceGeodesic(*this, {vOrig}, traceVec).endPoint;
+  // Nudge if the trace result ends up exactly on an edge
+  for (int i = 0; i < 3; ++i) {
+    if (vNew_positionOnIntrinsic.faceCoords[i] == 0.) {
+      vNew_positionOnIntrinsic.faceCoords[i] += 2.e-5;
+      vNew_positionOnIntrinsic.faceCoords[(i + 1) % 3] -= 1.e-5;
+      vNew_positionOnIntrinsic.faceCoords[(i + 2) % 3] -= 1.e-5;
+      break;
+    }
+  }
   SurfacePoint vNew_positionOnInput = equivalentPointOnInput(vNew_positionOnIntrinsic);
   assert(vNew_positionOnInput.type == SurfacePointType::Face);
 
