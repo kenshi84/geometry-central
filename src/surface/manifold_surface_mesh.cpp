@@ -1723,6 +1723,102 @@ Face ManifoldSurfaceMesh::addTriangleToBoundary(Edge eA, Edge eB) {
   return fNew;
 }
 
+Face ManifoldSurfaceMesh::addTrianglesToBridgeBoundary(Edge eA, Edge eB, bool connectTails) {
+  GC_SAFETY_ASSERT(eA.isBoundary() && eB.isBoundary(), "addTrianglesToBridgeBoundary(): given edges not on boundary");
+
+  // Collect existing elements
+  Halfedge heA = eA.halfedge().twin();
+  Halfedge heB = eB.halfedge().twin();
+  Halfedge heANext = heA.next();
+  Halfedge heBNext = heB.next();
+  Halfedge heAPrev = heA.prevOrbitVertex();
+  Halfedge heBPrev = heB.prevOrbitVertex();
+  Vertex vA0 = heA.vertex();
+  Vertex vA1 = heA.tipVertex();
+  Vertex vB0 = heB.vertex();
+  Vertex vB1 = heB.tipVertex();
+
+  GC_SAFETY_ASSERT(heANext != heB && heBNext != heA && heANext.next() != heB && heBNext.next() != heA, "addTrianglesToBridgeBoundary(): given edges consecutive");
+  GC_SAFETY_ASSERT(heA.face() == heB.face(), "addTrianglesToBridgeBoundary(): given edges belong to different boundary loops");
+
+  // Create new elements
+  Halfedge heNewA = getNewEdgeTriple(true);
+  Halfedge heNewB = getNewEdgeTriple(true);
+  Halfedge heNewC = getNewEdgeTriple(false);
+  Halfedge heNewAT = heNewA.twin();     // This lives on the boundary
+  Halfedge heNewBT = heNewB.twin();     // This lives on the boundary
+  Halfedge heNewCT = heNewC.twin();
+  Face fNewA = getNewFace();
+  Face fNewB = getNewFace();
+  BoundaryLoop blNew = getNewBoundaryLoop();
+
+  // Boundary loop's index can change due to array resize, so make sure to get pointer *after* resize
+  BoundaryLoop bl = heA.face().asBoundaryLoop();
+
+  // Connect up all the pointers for the new elements
+  heNextArr  [heNewA.getIndex()] = (connectTails ? heNewC : heB).getIndex();
+  heFaceArr  [heNewA.getIndex()] = fNewA.getIndex();
+  heVertexArr[heNewA.getIndex()] = vA1.getIndex();
+
+  heNextArr  [heNewAT.getIndex()] = heANext.getIndex();
+  heFaceArr  [heNewAT.getIndex()] = bl.asFace().getIndex();
+  heVertexArr[heNewAT.getIndex()] = vB0.getIndex();
+
+  heNextArr  [heNewB.getIndex()] = (connectTails ? heNewCT : heA).getIndex();
+  heFaceArr  [heNewB.getIndex()] = fNewB.getIndex();
+  heVertexArr[heNewB.getIndex()] = vB1.getIndex();
+
+  heNextArr  [heNewBT.getIndex()] = heBNext.getIndex();
+  heFaceArr  [heNewBT.getIndex()] = blNew.getIndex();
+  heVertexArr[heNewBT.getIndex()] = vA0.getIndex();
+
+  heNextArr  [heNewC.getIndex()] = (connectTails ? heA : heNewB).getIndex();
+  heFaceArr  [heNewC.getIndex()] = fNewA.getIndex();
+  heVertexArr[heNewC.getIndex()] = (connectTails ? vB0 : vA1).getIndex();
+
+  heNextArr  [heNewCT.getIndex()] = (connectTails ? heB : heNewA).getIndex();
+  heFaceArr  [heNewCT.getIndex()] = fNewB.getIndex();
+  heVertexArr[heNewCT.getIndex()] = (connectTails ? vA0 : vB1).getIndex();
+
+  fHalfedgeArr[fNewA.getIndex()] = heA.getIndex();
+
+  fHalfedgeArr[fNewB.getIndex()] = heB.getIndex();
+
+  fHalfedgeArr[blNew.getIndex()] = heNewBT.getIndex();
+
+  // Connect up all the pointers for the existing elements
+  heNextArr  [heA.getIndex()] = (connectTails ? heNewA : heNewC).getIndex();
+  heFaceArr  [heA.getIndex()] = fNewA.getIndex();
+  // heVertexArr[heA.getIndex()] = .getIndex();
+
+  // heNextArr  [heANext.getIndex()] = .getIndex();
+  // heFaceArr  [heANext.getIndex()] = bl.asFace().getIndex();
+  // heVertexArr[heANext.getIndex()] = .getIndex();
+
+  heNextArr  [heAPrev.getIndex()] = heNewBT.getIndex();
+  heFaceArr  [heAPrev.getIndex()] = blNew.getIndex();
+  // heVertexArr[heAPrev.getIndex()] = .getIndex();
+
+  heNextArr  [heB.getIndex()] = (connectTails ? heNewB : heNewCT).getIndex();
+  heFaceArr  [heB.getIndex()] = fNewB.getIndex();
+  // heVertexArr[heB.getIndex()] = .getIndex();
+
+  // heNextArr  [heBNext.getIndex()] = .getIndex();
+  heFaceArr  [heBNext.getIndex()] = blNew.getIndex();
+  // heVertexArr[heBNext.getIndex()] = .getIndex();
+
+  heNextArr  [heBPrev.getIndex()] = heNewAT.getIndex();
+  // heFaceArr  [heBPrev.getIndex()] = bl.asFace().getIndex();
+  // heVertexArr[heBPrev.getIndex()] = .getIndex();
+
+  fHalfedgeArr[bl.asFace().getIndex()] = heNewAT.getIndex();
+
+  nInteriorHalfedgesCount += 2;
+
+  modificationTick++;
+  return fNewA;
+}
+
 Face ManifoldSurfaceMesh::fillHole(BoundaryLoop bl) {
   Face f = getNewFace();
   fHalfedgeArr[f.getIndex()] = bl.halfedge().getIndex();
