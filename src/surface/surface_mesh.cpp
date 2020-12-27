@@ -1514,7 +1514,7 @@ Halfedge SurfaceMesh::getNewEdgeTriple(bool onBoundary) {
 Face SurfaceMesh::getNewFace() {
 
   // The boring case, when no resize is needed
-  if (nFacesFillCount + nBoundaryLoopsCount < nFacesCapacityCount) {
+  if (nFacesFillCount + nBoundaryLoopsFillCount < nFacesCapacityCount) {
     // No work needed
   }
   // The intesting case, where vectors resize
