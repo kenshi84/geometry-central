@@ -93,8 +93,10 @@ public:
   // The new face's halfedge is set to the newly created one
   Face addTriangleToBoundary(Edge eA, Edge eB);
 
-  // Add a pair of triangle that bridges two non-consecutive boundary edges belonging to the same boundary
-  // loop, creating two faces and three edges. The new faces' halfedges are set to the existing one.
+  // Add a pair of triangles that bridges two non-consecutive boundary edges in the same boundary loop,
+  // or two boundary edges in different boundary loops. Two faces and three edges always get created,
+  // while one boundary loop gets created (deleted) when the input boundary edges came from the same
+  // boundary loop (from different boundary loops). The new faces' halfedges are set to the existing one.
   // connectTips controls the choice of diagonal split.
   // Returns the new face adjacent to eA.
   Face addTrianglesToBridgeBoundary(Edge eA, Edge eB, bool connectTails);

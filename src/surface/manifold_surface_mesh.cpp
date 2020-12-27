@@ -1731,6 +1731,9 @@ Face ManifoldSurfaceMesh::addTrianglesToBridgeBoundary(Edge eA, Edge eB, bool co
   Halfedge heB = eB.halfedge().twin();
   Halfedge heANext = heA.next();
   Halfedge heBNext = heB.next();
+
+  GC_SAFETY_ASSERT(heANext != heB && heBNext != heA, "addTrianglesToBridgeBoundary(): given edges consecutive");
+
   Halfedge heAPrev = heA.prevOrbitVertex();
   Halfedge heBPrev = heB.prevOrbitVertex();
   Vertex vA0 = heA.vertex();
@@ -1738,8 +1741,7 @@ Face ManifoldSurfaceMesh::addTrianglesToBridgeBoundary(Edge eA, Edge eB, bool co
   Vertex vB0 = heB.vertex();
   Vertex vB1 = heB.tipVertex();
 
-  GC_SAFETY_ASSERT(heANext != heB && heBNext != heA && heANext.next() != heB && heBNext.next() != heA, "addTrianglesToBridgeBoundary(): given edges consecutive");
-  GC_SAFETY_ASSERT(heA.face() == heB.face(), "addTrianglesToBridgeBoundary(): given edges belong to different boundary loops");
+  bool splitBoundary = heA.face() == heB.face();
 
   // Create new elements
   Halfedge heNewA = getNewEdgeTriple(true);
@@ -1750,26 +1752,30 @@ Face ManifoldSurfaceMesh::addTrianglesToBridgeBoundary(Edge eA, Edge eB, bool co
   Halfedge heNewCT = heNewC.twin();
   Face fNewA = getNewFace();
   Face fNewB = getNewFace();
-  BoundaryLoop blNew = getNewBoundaryLoop();
+
+  BoundaryLoop blNew;
+  if (splitBoundary)
+    blNew = getNewBoundaryLoop();
 
   // Boundary loop's index can change due to array resize, so make sure to get pointer *after* resize
-  BoundaryLoop bl = heA.face().asBoundaryLoop();
+  BoundaryLoop blA = heA.face().asBoundaryLoop();
+  BoundaryLoop blB = heB.face().asBoundaryLoop();         // This gets deleted when splitBoundary == false
 
   // Connect up all the pointers for the new elements
   heNextArr  [heNewA.getIndex()] = (connectTails ? heNewC : heB).getIndex();
-  heFaceArr  [heNewA.getIndex()] = fNewA.getIndex();
+  heFaceArr  [heNewA.getIndex()] = (connectTails ? fNewA : fNewB).getIndex();
   heVertexArr[heNewA.getIndex()] = vA1.getIndex();
 
   heNextArr  [heNewAT.getIndex()] = heANext.getIndex();
-  heFaceArr  [heNewAT.getIndex()] = bl.asFace().getIndex();
+  heFaceArr  [heNewAT.getIndex()] = blA.asFace().getIndex();
   heVertexArr[heNewAT.getIndex()] = vB0.getIndex();
 
   heNextArr  [heNewB.getIndex()] = (connectTails ? heNewCT : heA).getIndex();
-  heFaceArr  [heNewB.getIndex()] = fNewB.getIndex();
+  heFaceArr  [heNewB.getIndex()] = (connectTails ? fNewB : fNewA).getIndex();
   heVertexArr[heNewB.getIndex()] = vB1.getIndex();
 
   heNextArr  [heNewBT.getIndex()] = heBNext.getIndex();
-  heFaceArr  [heNewBT.getIndex()] = blNew.getIndex();
+  heFaceArr  [heNewBT.getIndex()] = splitBoundary ? blNew.getIndex() : blA.asFace().getIndex();
   heVertexArr[heNewBT.getIndex()] = vA0.getIndex();
 
   heNextArr  [heNewC.getIndex()] = (connectTails ? heA : heNewB).getIndex();
@@ -1784,34 +1790,42 @@ Face ManifoldSurfaceMesh::addTrianglesToBridgeBoundary(Edge eA, Edge eB, bool co
 
   fHalfedgeArr[fNewB.getIndex()] = heB.getIndex();
 
-  fHalfedgeArr[blNew.getIndex()] = heNewBT.getIndex();
+  if (splitBoundary)
+    fHalfedgeArr[blNew.getIndex()] = heNewBT.getIndex();
 
   // Connect up all the pointers for the existing elements
   heNextArr  [heA.getIndex()] = (connectTails ? heNewA : heNewC).getIndex();
   heFaceArr  [heA.getIndex()] = fNewA.getIndex();
-  // heVertexArr[heA.getIndex()] = .getIndex();
-
-  // heNextArr  [heANext.getIndex()] = .getIndex();
-  // heFaceArr  [heANext.getIndex()] = bl.asFace().getIndex();
-  // heVertexArr[heANext.getIndex()] = .getIndex();
 
   heNextArr  [heAPrev.getIndex()] = heNewBT.getIndex();
-  heFaceArr  [heAPrev.getIndex()] = blNew.getIndex();
-  // heVertexArr[heAPrev.getIndex()] = .getIndex();
 
   heNextArr  [heB.getIndex()] = (connectTails ? heNewB : heNewCT).getIndex();
   heFaceArr  [heB.getIndex()] = fNewB.getIndex();
-  // heVertexArr[heB.getIndex()] = .getIndex();
-
-  // heNextArr  [heBNext.getIndex()] = .getIndex();
-  heFaceArr  [heBNext.getIndex()] = blNew.getIndex();
-  // heVertexArr[heBNext.getIndex()] = .getIndex();
 
   heNextArr  [heBPrev.getIndex()] = heNewAT.getIndex();
-  // heFaceArr  [heBPrev.getIndex()] = bl.asFace().getIndex();
-  // heVertexArr[heBPrev.getIndex()] = .getIndex();
 
-  fHalfedgeArr[bl.asFace().getIndex()] = heNewAT.getIndex();
+  fHalfedgeArr[blA.asFace().getIndex()] = heNewAT.getIndex();
+
+  vHalfedgeArr[vA1.getIndex()] = heNewA.getIndex();   // Ensure that vA1.halfedge().twin() is exterior
+  vHalfedgeArr[vB1.getIndex()] = heNewB.getIndex();
+
+  // Update face association for each boundary halfedge
+  if (splitBoundary) {
+    Halfedge heCurr = heBNext;
+    do {
+      heFaceArr[heCurr.getIndex()] = blNew.getIndex();
+      heCurr = heCurr.next();
+    } while (heCurr != heNewBT);
+
+  } else {
+    Halfedge heCurr = heBNext;
+    do {
+      heFaceArr[heCurr.getIndex()] = blA.asFace().getIndex();
+      heCurr = heCurr.next();
+    } while (heCurr != heNewAT);
+
+    deleteElement(blB);
+  }
 
   nInteriorHalfedgesCount += 2;
 
