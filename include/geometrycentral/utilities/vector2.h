@@ -98,6 +98,9 @@ Vector2 operator*(const T s, const Vector2& v);
 double arg(const Vector2& v);
 double norm(const Vector2& v);
 double norm2(const Vector2& v);
+double sum(const Vector2& v);
+double max(const Vector2& v, size_t* index = nullptr);
+double min(const Vector2& v, size_t* index = nullptr);
 
 double angle(const Vector2& u, const Vector2& v);
 double orientedAngle(const Vector2& u, const Vector2& v);

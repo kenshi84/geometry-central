@@ -159,6 +159,19 @@ inline double norm2(const Vector2& v) { return v.x * v.x + v.y * v.y; }
 
 
 inline double dot(const Vector2& u, const Vector2& v) { return u.x * v.x + u.y * v.y; }
+inline double sum(const Vector2& u) { return u.x + u.y; }
+
+inline double max(const Vector2& v, size_t* index) {
+  if (index)
+    *index = v.x > v.y ? 0 : 1;
+  return std::max<double>(v.x, v.y);
+}
+
+inline double min(const Vector2& v, size_t* index) {
+  if (index)
+    *index = v.x < v.y ? 0 : 1;
+  return std::min<double>(v.x, v.y);
+}
 
 inline double angle(const Vector2& u, const Vector2& v) {
   return std::acos(std::fmax(-1., std::fmin(1., dot(unit(u), unit(v)))));

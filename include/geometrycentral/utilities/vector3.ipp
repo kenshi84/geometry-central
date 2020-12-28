@@ -107,6 +107,18 @@ inline Vector3 cross(const Vector3& u, const Vector3& v) {
 inline double dot(const Vector3& u, const Vector3& v) { return u.x * v.x + u.y * v.y + u.z * v.z; }
 inline double sum(const Vector3& u) { return u.x + u.y + u.z; }
 
+inline double max(const Vector3& v, size_t* index) {
+  if (index)
+    *index = v.x > v.y && v.x > v.z ? 0 : v.y > v.z ? 1 : 2;
+  return std::max<double>({v.x, v.y, v.z});
+}
+
+inline double min(const Vector3& v, size_t* index) {
+  if (index)
+    *index = v.x < v.y && v.x < v.z ? 0 : v.y < v.z ? 1 : 2;
+  return std::min<double>({v.x, v.y, v.z});
+}
+
 inline double angle(const Vector3& u, const Vector3& v) {
   return std::acos(std::fmax(-1., std::fmin(1., dot(unit(u), unit(v)))));
 }
