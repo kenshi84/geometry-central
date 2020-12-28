@@ -118,6 +118,7 @@ inline SurfacePoint SurfacePoint::inSomeFace() const {
 }
 
 inline SurfacePoint SurfacePoint::inFace(Face targetFace) const {
+  GC_SAFETY_ASSERT(getMesh() && getMesh() == targetFace.getMesh(), "wrong argument");
 
   switch (type) {
   case SurfacePointType::Vertex: {
@@ -176,6 +177,42 @@ inline SurfacePoint SurfacePoint::inFace(Face targetFace) const {
 
   throw std::logic_error("SurfacePoint " + std::to_string(*this) + " not adjacent to target face " +
                          std::to_string(targetFace));
+  return *this;
+}
+
+inline SurfacePoint SurfacePoint::inEdge(Edge targetEdge) const {
+  GC_SAFETY_ASSERT(getMesh() && getMesh() == targetEdge.getMesh(), "wrong argument");
+
+  switch (type) {
+  case SurfacePointType::Vertex: {
+
+    Halfedge he = targetEdge.halfedge();
+
+    // Find the appropriate tEdge and return
+    if (he.vertex() == vertex) {
+      return SurfacePoint(targetEdge, 0.);
+    }
+    he = he.twin();
+    if (he.vertex() == vertex) {
+      return SurfacePoint(targetEdge, 1.);
+    }
+
+    break;
+  }
+
+  case SurfacePointType::Edge:
+    if (edge == targetEdge)
+      return *this;
+    break;
+
+  case SurfacePointType::Face:
+    throw std::logic_error("inEdge cannot be called on a face point");
+    break;
+
+  }
+
+  throw std::logic_error("SurfacePoint " + std::to_string(*this) + " not adjacent to target edge " +
+                         std::to_string(targetEdge));
   return *this;
 }
 

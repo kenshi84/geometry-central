@@ -61,6 +61,11 @@ struct SurfacePoint {
   // on or adjacent to the requested face, throws an error.
   inline SurfacePoint inFace(Face f) const;
 
+  // If this is a point on edge e, returns itself.
+  // If this is a vertex, and if edge e is adjacent to it, returns an equivalent edge point in e.
+  // Otherwise, throws an error.
+  inline SurfacePoint inEdge(Edge e) const;
+
   // Return the nearest vertex to this surface point
   // When delta is present, return the magnitude of change:
   //    vertex point -> 0
