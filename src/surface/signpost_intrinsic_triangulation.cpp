@@ -167,15 +167,10 @@ SurfacePoint SignpostIntrinsicTriangulation::equivalentPointOnIntrinsic(SurfaceP
 
   // If edge on inputMesh is preserved, simply return it. Otherwise treat it as a face point.
   if (pointOnInput.type == SurfacePointType::Edge) {
-    Edge intrinsicE;
-    if (isInputEdgePreserved(pointOnInput.edge, &intrinsicE)) {
-      if (intrinsicE.halfedge().vertex().getIndex() == pointOnInput.edge.halfedge().vertex().getIndex()) {
-        return SurfacePoint(intrinsicE, pointOnInput.tEdge);
-      } else {
-        assert(intrinsicE.halfedge().tipVertex().getIndex() == pointOnInput.edge.halfedge().vertex().getIndex());
-        return SurfacePoint(intrinsicE, 1. - pointOnInput.tEdge);
-      }
-    }
+    SurfacePoint pointOnIntrinsic;
+    if (isInputEdgePointPreserved(pointOnInput, &pointOnIntrinsic))
+      return pointOnIntrinsic;
+
     pointOnInput = pointOnInput.inSomeFace();
   }
 
@@ -344,7 +339,7 @@ bool SignpostIntrinsicTriangulation::isDelaunay() {
   return true;
 }
 
-bool SignpostIntrinsicTriangulation::isIntrinsicEdgeOriginal(Edge eIntrinsic, Edge* eInput_ptr) const {
+bool SignpostIntrinsicTriangulation::isIntrinsicEdgeOriginal(Edge eIntrinsic, Edge* eInput_ptr, bool* reversed_ptr) const {
   SurfacePoint sp0 = vertexLocations[eIntrinsic.halfedge().vertex()];
   SurfacePoint sp1 = vertexLocations[eIntrinsic.halfedge().twin().vertex()];
 
@@ -355,12 +350,14 @@ bool SignpostIntrinsicTriangulation::isIntrinsicEdgeOriginal(Edge eIntrinsic, Ed
   if (eInput.getMesh()) {
     if (eInput_ptr)
       *eInput_ptr = eInput;
+    if (reversed_ptr)
+      *reversed_ptr = eInput.halfedge().vertex() == sp1.vertex;
     return true;
   }
   return false;
 }
 
-bool SignpostIntrinsicTriangulation::isInputEdgePreserved(Edge eInput, Edge* eIntrinsic_ptr) const {
+bool SignpostIntrinsicTriangulation::isInputEdgePreserved(Edge eInput, Edge* eIntrinsic_ptr, bool* reversed_ptr) const {
   if (eInput.getMesh() != &inputMesh)
     throw std::logic_error("eInput is pointed to wrong mesh");
 
@@ -372,7 +369,126 @@ bool SignpostIntrinsicTriangulation::isInputEdgePreserved(Edge eInput, Edge* eIn
   if (eIntrinsic.getMesh()) {
     if (eIntrinsic_ptr)
       *eIntrinsic_ptr = eIntrinsic;
+    if (reversed_ptr)
+      *reversed_ptr = eIntrinsic.halfedge().vertex() == vIntrinsic1;
     return true;
+  }
+  return false;
+}
+
+bool SignpostIntrinsicTriangulation::isIntrinsicEdgePartiallyOriginal(Edge eIntrinsic, Edge* eInput_ptr, double* tEdgeMin_ptr,  double* tEdgeMax_ptr, bool* reversed_ptr) const {
+  SurfacePoint sp0 = vertexLocations[eIntrinsic.halfedge().vertex()];
+  SurfacePoint sp1 = vertexLocations[eIntrinsic.halfedge().twin().vertex()];
+
+  if (sp0.type == SurfacePointType::Face) return false;
+  if (sp1.type == SurfacePointType::Face) return false;
+
+  // If both endpoints are vertex points, the test becomes identical to isIntrinsicEdgeOriginal
+  if (sp0.type == SurfacePointType::Vertex && sp1.type == SurfacePointType::Vertex) {
+    if (isIntrinsicEdgeOriginal(eIntrinsic, eInput_ptr, reversed_ptr)) {
+      if (tEdgeMin_ptr) *tEdgeMin_ptr = 0.;
+      if (tEdgeMax_ptr) *tEdgeMax_ptr = 1.;
+      return true;
+    }
+    return false;
+  }
+
+  Edge inputE0 = sp0.edge;
+  Edge inputE1 = sp1.edge;
+
+  // At least one of the two endpoints should be on an edge
+  GC_SAFETY_ASSERT(inputE0 != Edge() || inputE1 != Edge(), "");
+
+  if (inputE0 != Edge() && inputE1 != Edge()) {
+    if (inputE0 == inputE1) {
+      if (eInput_ptr)
+        *eInput_ptr = inputE0;
+      if (tEdgeMin_ptr) *tEdgeMin_ptr = std::min<double>(sp0.tEdge, sp1.tEdge);
+      if (tEdgeMax_ptr) *tEdgeMax_ptr = std::max<double>(sp0.tEdge, sp1.tEdge);
+      if (reversed_ptr)
+        *reversed_ptr = sp0.tEdge > sp1.tEdge;
+      return true;
+    }
+    return false;
+  }
+
+  Vertex inputV0 = sp0.vertex;
+  Vertex inputV1 = sp1.vertex;
+
+  if (inputE0 != Edge()) {
+    GC_SAFETY_ASSERT(inputV1 != Vertex(), "");
+    if (inputE0.halfedge().tailVertex() == inputV1 || inputE0.halfedge().tipVertex() == inputV1) {
+      if (eInput_ptr)
+        *eInput_ptr = inputE0;
+      sp1 = sp1.inEdge(inputE0);
+      if (tEdgeMin_ptr) *tEdgeMin_ptr = std::min<double>(sp0.tEdge, sp1.tEdge);
+      if (tEdgeMax_ptr) *tEdgeMax_ptr = std::max<double>(sp0.tEdge, sp1.tEdge);
+      if (reversed_ptr)
+        *reversed_ptr = sp0.tEdge > sp1.tEdge;
+      return true;
+    }
+    return false;
+  }
+
+  GC_SAFETY_ASSERT(inputE1 != Edge() && inputV0 != Vertex(), "");
+  if (inputE1.halfedge().tailVertex() == inputV0 || inputE1.halfedge().tipVertex() == inputV0) {
+    if (eInput_ptr)
+      *eInput_ptr = inputE1;
+    sp0 = sp0.inEdge(inputE1);
+    if (tEdgeMin_ptr) *tEdgeMin_ptr = std::min<double>(sp0.tEdge, sp1.tEdge);
+    if (tEdgeMax_ptr) *tEdgeMax_ptr = std::max<double>(sp0.tEdge, sp1.tEdge);
+    if (reversed_ptr)
+      *reversed_ptr = sp0.tEdge > sp1.tEdge;
+    return true;
+  }
+  return false;
+}
+
+bool SignpostIntrinsicTriangulation::isInputEdgePointPreserved(SurfacePoint inputEdgePoint, SurfacePoint* intrinsicEdgePoint_ptr, bool* reversed_ptr) const {
+  GC_SAFETY_ASSERT(inputEdgePoint.edge.getMesh() == &inputMesh, "inputEdgePoint is wrong");
+
+  Edge inputE = inputEdgePoint.edge;
+  double tEdgeInput = inputEdgePoint.tEdge;
+  std::array<Vertex, 2> inputV = inputE.adjacentVertices();
+
+  // A bit expensive search over all the intrinsic edges
+  std::map<Edge, std::vector<double>> tEdgeIntervals;
+  for (Edge intrinsicE : intrinsicMesh->edges()) {
+    std::vector<double> tEdgeInterval;
+    for (Vertex intrinsicV : intrinsicE.adjacentVertices()) {
+      SurfacePoint inputSP = vertexLocations[intrinsicV];
+
+      for (int i = 0; i < 2; ++i) {
+        if (inputSP.vertex == inputV[i])
+          tEdgeInterval.push_back(SurfacePoint(inputV[i]).inEdge(inputE).tEdge);
+      }
+
+      if (inputSP.edge == inputE)
+        tEdgeInterval.push_back(inputSP.tEdge);
+    }
+    if (tEdgeInterval.size() == 2)
+      tEdgeIntervals[intrinsicE] = tEdgeInterval;
+  }
+
+  for (const auto& p : tEdgeIntervals) {
+    Edge intrinsicE;
+    std::vector<double> tEdgeInterval;
+    std::tie(intrinsicE, tEdgeInterval) = p;
+
+    double tEdgeMin = std::min<double>(tEdgeInterval[0], tEdgeInterval[1]);
+    double tEdgeMax = std::max<double>(tEdgeInterval[0], tEdgeInterval[1]);
+
+    if (tEdgeMin < inputEdgePoint.tEdge && inputEdgePoint.tEdge < tEdgeMax) {
+      // (1 - s) * tEdge0 + s * tEdge1 = tEdgeInput
+      // s = (tEdgeInput - tEdge0) / (tEdge1 - tEdge0)
+      if (intrinsicEdgePoint_ptr) {
+        double tEdgeIntrinsic = (tEdgeInput - tEdgeInterval[0]) / (tEdgeInterval[1] - tEdgeInterval[0]);
+        *intrinsicEdgePoint_ptr = SurfacePoint(intrinsicE, tEdgeIntrinsic);
+      }
+      if (reversed_ptr)
+        *reversed_ptr = tEdgeInterval[0] > tEdgeInterval[1];
+      return true;
+    }
   }
   return false;
 }
@@ -768,6 +884,12 @@ Halfedge SignpostIntrinsicTriangulation::insertVertex_edge(SurfacePoint newP) {
   Face fB = insertionEdge.halfedge().twin().face();
   bool isOnBoundary = fB.isBoundaryLoop();
 
+  // If the intrinsic edge being split is partially original, the inserted vertex's position should be on the input edge
+  Edge eInput;
+  double tEdgeMin, tEdgeMax;
+  bool eInput_reversed;
+  isIntrinsicEdgePartiallyOriginal(insertionEdge, &eInput, &tEdgeMin, &tEdgeMax, &eInput_reversed);
+
   // Find coordinates in (both) faces and compute the lengths of the new wedges
   double backLen, frontLen, Alen, Blen;
 
@@ -821,7 +943,37 @@ Halfedge SignpostIntrinsicTriangulation::insertVertex_edge(SurfacePoint newP) {
   }
 
   // === (4) Now that we have edge lengths, sort out tangent spaces and position on supporting.
-  resolveNewVertex(newV, newP);
+  if (eInput != Edge()) {
+    // Compute incoming halfedge angular coordinates for our new vertex
+    for (Halfedge heIn : newV.incomingHalfedges()) {
+      updateAngleFromCWNeighor(heIn);
+    }
+
+    // Set up bases on the intrinsic faces
+    for (Face f : newV.adjacentFaces()) {
+      updateFaceBasis(f);
+    }
+
+    // Set vertex location to the edge point
+    if (eInput_reversed)
+      std::swap(tEdgeMin, tEdgeMax);
+    vertexLocations[newV] = SurfacePoint(eInput, (1. - newP.tEdge) * tEdgeMin + newP.tEdge * tEdgeMax);
+
+    // Compute outgoing halfedge angular coordinates
+    intrinsicHalfedgeDirections[newHeFront] = 0.;
+    halfedgeVectorsInVertex[newHeFront] = halfedgeVector(newHeFront);
+
+    // Custom loop to orbit CCW from firstHE
+    Halfedge currHe = newHeFront.next().next().twin();
+    do {
+      updateAngleFromCWNeighor(currHe);
+      GC_SAFETY_ASSERT(currHe.isInterior(), "The inserted new vertex should always be interior");
+      currHe = currHe.next().next().twin();
+    } while (currHe != newHeFront);
+
+  } else {
+    resolveNewVertex(newV, newP);
+  }
 
   invokeEdgeSplitCallbacks(insertionEdge, newHeFront, newHeBack);
 

@@ -89,9 +89,22 @@ public:
   bool isDelaunay();
   bool isDelaunay(Edge e);
 
-  bool isIntrinsicEdgeOriginal(Edge eIntrinsic, Edge* eInput_ptr = nullptr) const;
+  // Returns true if the given intrinsic edge corresponds to an input edge, which is returned if eInput_ptr is non-null.
+  // Whether the orientation of the intrinsic edge is reversed or not wrt the input edge is returned if reversed_ptr is non-null.
+  bool isIntrinsicEdgeOriginal(Edge eIntrinsic, Edge* eInput_ptr = nullptr, bool* reversed_ptr = nullptr) const;
 
-  bool isInputEdgePreserved(Edge eInput, Edge* eIntrinsic_ptr = nullptr) const;
+  // Returns true if the given input edge corresponds to an intrinsic edge, which is returned if eIntrinsic_ptr is non-null.
+  // Whether the orientation of the input edge is reversed or not wrt the intrinsic edge is returned if reversed_ptr is non-null.
+  bool isInputEdgePreserved(Edge eInput, Edge* eIntrinsic_ptr = nullptr, bool* reversed_ptr = nullptr) const;
+
+  // Returns true if the given intrinsic edge spans a portion of an input edge, which is returned if eInput_ptr is non-null.
+  // The corresponding span within that input edge is returned if tEdgeMin_ptr and tEdgeMax_ptr are non-null.
+  // Whether the orientation of the intrinsic edge is reversed or not wrt the input edge is returned if reversed_ptr is non-null.
+  bool isIntrinsicEdgePartiallyOriginal(Edge eIntrinsic, Edge* eInput_ptr = nullptr, double* tEdgeMin_ptr = nullptr,  double* tEdgeMax_ptr = nullptr, bool* reversed_ptr = nullptr) const;
+
+  // Returns true if the given input edge point corresponds to an intrinsic edge point, which is returned if intrinsicEdgePoint_ptr is non-null.
+  // Whether the orientation of the input edge is reversed or not wrt the intrinsic edge is returned if reversed_ptr is non-null.
+  bool isInputEdgePointPreserved(SurfacePoint inputEdgePoint, SurfacePoint* intrinsicEdgePoint_ptr = nullptr, bool* reversed_ptr = nullptr) const;
 
   // Returns the smallest angle in the intrinsic triangulation, in degrees
   double minAngleDegrees();
