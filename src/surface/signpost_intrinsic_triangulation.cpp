@@ -271,10 +271,10 @@ SurfacePoint SignpostIntrinsicTriangulation::equivalentPointOnInput(SurfacePoint
 std::vector<SurfacePoint> SignpostIntrinsicTriangulation::traceHalfedge(Halfedge he, bool trimEnd) {
 
   // Optimization: don't both tracing original edges, just report them directly
-  if (isIntrinsicEdgeOriginal(he.edge())) {
-    Vertex vA = vertexLocations[he.vertex()].vertex;
-    Vertex vB = vertexLocations[he.twin().vertex()].vertex;
-    std::vector<SurfacePoint> result{SurfacePoint(vA), SurfacePoint(vB)};
+  if (isIntrinsicEdgePartiallyOriginal(he.edge())) {
+    SurfacePoint spA = vertexLocations[he.vertex()];
+    SurfacePoint spB = vertexLocations[he.twin().vertex()];
+    std::vector<SurfacePoint> result{spA, spB};
     return result;
   }
 
@@ -291,8 +291,8 @@ std::vector<SurfacePoint> SignpostIntrinsicTriangulation::traceHalfedge(Halfedge
 
   // Trim off end crumbs if applicable
   Vertex endVert = he.twin().vertex();
-  if (trimEnd && vertexLocations[endVert].type == SurfacePointType::Vertex) {
-    bool success = trimTraceResult(result, endVert);
+  if (trimEnd && vertexLocations[endVert].type != SurfacePointType::Face) {
+    bool success = trimTraceResult(result, vertexLocations[endVert]);
     if (success) {
       // Append the endpoint
       result.pathPoints.push_back(vertexLocations[endVert]);

@@ -50,7 +50,7 @@ TraceGeodesicResult traceGeodesic(const IntrinsicGeometryInterface& geom, Face s
 // targetVertex
 // TODO currently DOES NOT fix up traceResult.endingDir, so that field is invalid after calling
 // Return value indicates success. If true, the resulting ends in the 1-ring of targetVertex as expected.
-bool trimTraceResult(TraceGeodesicResult& traceResult, Vertex targetVertex);
+bool trimTraceResult(TraceGeodesicResult& traceResult, SurfacePoint targetVertexLocation);
 
 } // namespace surface
 } // namespace geometrycentral

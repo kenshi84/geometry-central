@@ -775,18 +775,33 @@ TraceGeodesicResult traceGeodesic(const IntrinsicGeometryInterface& geom, Face s
   return result;
 }
 
-bool trimTraceResult(TraceGeodesicResult& traceResult, Vertex targetVertex) {
+bool trimTraceResult(TraceGeodesicResult& traceResult, SurfacePoint targetVertexLocation) {
 
   while (traceResult.pathPoints.size() > 1) {
-    SurfacePoint& b = traceResult.pathPoints.back();
+    const SurfacePoint& b = traceResult.pathPoints.back();
 
-    // Remove any edge crossings connected to the target vertex: they're numerical noise because we're already in the
-    // 1-ring
-    if (b.type == SurfacePointType::Edge &&
-        (b.edge.halfedge().vertex() == targetVertex || b.edge.halfedge().twin().vertex() == targetVertex)) {
-      traceResult.pathPoints.pop_back();
-      traceResult.endingDir = Vector2::undefined();
-      continue;
+    GC_SAFETY_ASSERT(b.getMesh() == targetVertexLocation.getMesh(), "wrong targetVertexLocation");
+
+    if (targetVertexLocation.type == SurfacePointType::Vertex) {
+      // Remove any edge crossings connected to the target vertex: they're numerical noise because we're already in the
+      // 1-ring
+      if (b.type == SurfacePointType::Edge &&
+        (b.edge.halfedge().vertex() == targetVertexLocation.vertex ||
+         b.edge.halfedge().tipVertex() == targetVertexLocation.vertex))
+      {
+        traceResult.pathPoints.pop_back();
+        traceResult.endingDir = Vector2::undefined();
+        continue;
+      }
+    }
+
+    if (targetVertexLocation.type == SurfacePointType::Edge) {
+      // Remove crossing with the same edge as the target edge point
+      if (b.type == SurfacePointType::Edge && b.edge == targetVertexLocation.edge) {
+        traceResult.pathPoints.pop_back();
+        traceResult.endingDir = Vector2::undefined();
+        continue;
+      }
     }
 
     // Always trim face points
@@ -811,35 +826,9 @@ bool trimTraceResult(TraceGeodesicResult& traceResult, Vertex targetVertex) {
   // Check success
   if (traceResult.pathPoints.empty()) return false;
 
-  SurfacePoint& b = traceResult.pathPoints.back();
+  const SurfacePoint& b = traceResult.pathPoints.back();
 
-  switch (b.type) {
-  case SurfacePointType::Vertex: {
-    if (b.vertex == targetVertex) return true;
-    for (Vertex n : b.vertex.adjacentVertices()) {
-      if (n == targetVertex) return true;
-    }
-    break;
-  }
-  case SurfacePointType::Edge: {
-    Halfedge bHe = b.edge.halfedge();
-    if (bHe.vertex() == targetVertex) return true;
-    if (bHe.twin().vertex() == targetVertex) return true;
-    if (bHe.next().next().vertex() == targetVertex) return true;
-    if (bHe.twin().next().next().vertex() == targetVertex) return true;
-    return false;
-    break;
-  }
-  case SurfacePointType::Face: {
-    for (Vertex v : b.face.adjacentVertices()) {
-      if (v == targetVertex) return true;
-    }
-    return false;
-    break;
-  }
-  }
-
-  return false;
+  return checkAdjacent(b, targetVertexLocation);
 }
 
 
