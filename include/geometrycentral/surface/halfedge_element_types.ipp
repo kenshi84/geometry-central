@@ -403,6 +403,20 @@ inline Face::Face(SurfaceMesh* mesh_, size_t ind_) : Element(mesh_,ind_) {}
 
 // Navigators
 inline Halfedge Face::halfedge() const { return Halfedge(mesh, mesh->fHalfedge(ind)); }
+inline Halfedge Face::oppositeHalfedge(Vertex v) const {
+  GC_SAFETY_ASSERT(degree() == 3, "face must be triangular to call oppositeHalfedge()")
+  bool found = false;
+  Halfedge res;
+  for (Halfedge he : adjacentHalfedges()) {
+    if (he.vertex() == v)
+      found = true;
+
+    if (he.vertex() != v && he.tipVertex() != v)
+      res = he;
+  }
+  if (!found) throw std::runtime_error("vertex not adjacent to this face");
+  return res;
+}
 inline BoundaryLoop Face::asBoundaryLoop() const { 
   GC_SAFETY_ASSERT(isBoundaryLoop(), "face must be boundary loop to call asBoundaryLoop()")
   return BoundaryLoop(mesh, mesh->faceIndToBoundaryLoopInd(ind)); 

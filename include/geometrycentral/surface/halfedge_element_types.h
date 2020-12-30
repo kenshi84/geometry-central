@@ -257,6 +257,7 @@ public:
 
   // Navigators
   Halfedge halfedge() const;
+  Halfedge oppositeHalfedge(Vertex v) const;
   BoundaryLoop asBoundaryLoop() const;
   bool isDead() const;
 
