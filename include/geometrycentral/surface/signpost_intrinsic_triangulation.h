@@ -105,6 +105,7 @@ public:
   // Returns true if the given input edge point corresponds to an intrinsic edge point, which is returned if intrinsicEdgePoint_ptr is non-null.
   // Whether the orientation of the input edge is reversed or not wrt the intrinsic edge is returned if reversed_ptr is non-null.
   bool isInputEdgePointPreserved(SurfacePoint inputEdgePoint, SurfacePoint* intrinsicEdgePoint_ptr = nullptr, bool* reversed_ptr = nullptr) const;
+  mutable EdgeData<std::unordered_set<std::tuple<Edge, double, double, bool>>> intrinsicEdges_per_inputEdge;   // Cached data needed for isInputEdgePointPreserved()
 
   // Returns the smallest angle in the intrinsic triangulation, in degrees
   double minAngleDegrees();

@@ -447,46 +447,39 @@ bool SignpostIntrinsicTriangulation::isIntrinsicEdgePartiallyOriginal(Edge eIntr
 bool SignpostIntrinsicTriangulation::isInputEdgePointPreserved(SurfacePoint inputEdgePoint, SurfacePoint* intrinsicEdgePoint_ptr, bool* reversed_ptr) const {
   GC_SAFETY_ASSERT(inputEdgePoint.edge.getMesh() == &inputMesh, "inputEdgePoint is wrong");
 
-  Edge inputE = inputEdgePoint.edge;
-  double tEdgeInput = inputEdgePoint.tEdge;
-  std::array<Vertex, 2> inputV = inputE.adjacentVertices();
-
-  // A bit expensive search over all the intrinsic edges
-  std::map<Edge, std::vector<double>> tEdgeIntervals;
-  for (Edge intrinsicE : intrinsicMesh->edges()) {
-    std::vector<double> tEdgeInterval;
-    for (Vertex intrinsicV : intrinsicE.adjacentVertices()) {
-      SurfacePoint inputSP = vertexLocations[intrinsicV];
-
-      for (int i = 0; i < 2; ++i) {
-        if (inputSP.vertex == inputV[i])
-          tEdgeInterval.push_back(SurfacePoint(inputV[i]).inEdge(inputE).tEdge);
-      }
-
-      if (inputSP.edge == inputE)
-        tEdgeInterval.push_back(inputSP.tEdge);
+  // Fill intrinsicEdges_per_inputEdge if empty
+  if (!intrinsicEdges_per_inputEdge.getMesh()) {
+    intrinsicEdges_per_inputEdge = EdgeData<std::unordered_set<std::tuple<Edge, double, double, bool>>>(inputMesh);
+    for (Edge intrinsicE : intrinsicMesh->edges()) {
+      Edge inputE;
+      double tEdgeMin, tEdgeMax;
+      bool reversed;
+      if (isIntrinsicEdgePartiallyOriginal(intrinsicE, &inputE, &tEdgeMin, &tEdgeMax, &reversed))
+        intrinsicEdges_per_inputEdge[inputE].insert({intrinsicE, tEdgeMin, tEdgeMax, reversed});
     }
-    if (tEdgeInterval.size() == 2)
-      tEdgeIntervals[intrinsicE] = tEdgeInterval;
   }
 
-  for (const auto& p : tEdgeIntervals) {
+  Edge inputE = inputEdgePoint.edge;
+  double tEdgeInput = inputEdgePoint.tEdge;
+
+  for (std::tuple<Edge, double, double, bool> t : intrinsicEdges_per_inputEdge[inputE]) {
     Edge intrinsicE;
-    std::vector<double> tEdgeInterval;
-    std::tie(intrinsicE, tEdgeInterval) = p;
+    double tEdgeMin, tEdgeMax;
+    bool reversed;
+    std::tie(intrinsicE, tEdgeMin, tEdgeMax, reversed) = t;
 
-    double tEdgeMin = std::min<double>(tEdgeInterval[0], tEdgeInterval[1]);
-    double tEdgeMax = std::max<double>(tEdgeInterval[0], tEdgeInterval[1]);
+    if (tEdgeMin < tEdgeInput && tEdgeInput < tEdgeMax) {
+      double tEdge0 = reversed ? tEdgeMax : tEdgeMin;
+      double tEdge1 = reversed ? tEdgeMin : tEdgeMax;
 
-    if (tEdgeMin < inputEdgePoint.tEdge && inputEdgePoint.tEdge < tEdgeMax) {
       // (1 - s) * tEdge0 + s * tEdge1 = tEdgeInput
       // s = (tEdgeInput - tEdge0) / (tEdge1 - tEdge0)
       if (intrinsicEdgePoint_ptr) {
-        double tEdgeIntrinsic = (tEdgeInput - tEdgeInterval[0]) / (tEdgeInterval[1] - tEdgeInterval[0]);
+        double tEdgeIntrinsic = (tEdgeInput - tEdge0) / (tEdge1 - tEdge0);
         *intrinsicEdgePoint_ptr = SurfacePoint(intrinsicE, tEdgeIntrinsic);
       }
       if (reversed_ptr)
-        *reversed_ptr = tEdgeInterval[0] > tEdgeInterval[1];
+        *reversed_ptr = reversed;
       return true;
     }
   }
@@ -800,6 +793,7 @@ bool SignpostIntrinsicTriangulation::flipEdgeIfNotDelaunay(Edge e) {
   updateFaceBasis(e.halfedge().twin().face());
 
   invokeEdgeFlipCallbacks(e);
+  intrinsicEdges_per_inputEdge = {};
   return true;
 }
 
@@ -854,10 +848,12 @@ bool SignpostIntrinsicTriangulation::flipEdgeIfPossible(Edge e, double possibleE
   updateFaceBasis(e.halfedge().twin().face());
 
   invokeEdgeFlipCallbacks(e);
+  intrinsicEdges_per_inputEdge = {};
   return true;
 }
 
 Vertex SignpostIntrinsicTriangulation::insertVertex(SurfacePoint newPositionOnIntrinsic) {
+  intrinsicEdges_per_inputEdge = {};
   switch (newPositionOnIntrinsic.type) {
   case SurfacePointType::Vertex: {
     throw std::logic_error("can't insert vertex at vertex");
@@ -1078,6 +1074,8 @@ Vertex SignpostIntrinsicTriangulation::insertBarycenter(Face f) {
 }
 
 Face SignpostIntrinsicTriangulation::removeInsertedVertex(Vertex v) {
+  intrinsicEdges_per_inputEdge = {};
+
   // Strategy: flip edges until the vertex has degree three, then remove by replacing with a single face
   // TODO needs a proof that this always works... what about self edges, etc? Seems to work well.
 
@@ -1170,6 +1168,7 @@ bool SignpostIntrinsicTriangulation::collapseInteriorEdge(Halfedge heA0, bool ch
     updateFaceBasis(he.face());
   }
 
+  intrinsicEdges_per_inputEdge = {};
   return true;
 }
 
@@ -1320,6 +1319,8 @@ Halfedge SignpostIntrinsicTriangulation::splitVertexAlongTwoEdges(Halfedge heA, 
     updateFaceBasis(f);
   }
 
+  intrinsicEdges_per_inputEdge = {};
+
   return heNew;
 }
 
@@ -1440,6 +1441,7 @@ void SignpostIntrinsicTriangulation::flipToDelaunay(std::function<bool(Edge)> fl
   }
 
   refreshQuantities();
+  intrinsicEdges_per_inputEdge = {};
 }
 
 void SignpostIntrinsicTriangulation::delaunayRefine(double angleThreshDegrees, double circumradiusThresh,
@@ -1696,6 +1698,7 @@ void SignpostIntrinsicTriangulation::delaunayRefine(const std::function<bool(Fac
   } while (!delaunayCheckQueue.empty() || !circumradiusCheckQueue.empty() || recheckCount < MAX_RECHECK_COUNT);
 
   refreshQuantities();
+  intrinsicEdges_per_inputEdge = {};
 
   edgeSplitCallbackList.erase(splitCallbackHandle);
   edgeFlipCallbackList.erase(flipCallbackHandle);
@@ -1784,6 +1787,7 @@ void SignpostIntrinsicTriangulation::splitBentEdges(EmbeddedGeometryInterface& p
   }
 
   refreshQuantities();
+  intrinsicEdges_per_inputEdge = {};
 
   posGeom.unrequireVertexPositions();
 }
