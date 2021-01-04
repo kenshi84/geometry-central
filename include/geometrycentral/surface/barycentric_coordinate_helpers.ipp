@@ -57,6 +57,22 @@ inline int halfedgeIndexInTriangle(Halfedge he) {
   return -7777777;
 }
 
+// The index of the vertex in a triangular face,
+inline int vertexIndexInTriangle(Vertex v, Face f) {
+  if (f.degree() != 3)
+    throw std::runtime_error("called vertexIndexInTriangle on non-triangular face");
+
+  Halfedge he = f.halfedge();
+  if (v == he.vertex()) return 0;
+  he = he.next();
+  if (v == he.vertex()) return 1;
+  he = he.next();
+  if (v == he.vertex()) return 2;
+
+  throw std::runtime_error("given vertex not adjacent to given face");
+  return -7777777;
+}
+
 
 // Given barycentric coordinates defined by treating refHe.vertex() as the `x` coordinate, permute to the canonical
 // coordinate ordering for the face, which has face.halfedge().vertex() as the `x` coordinate.

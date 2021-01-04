@@ -38,6 +38,9 @@ bool isInsideTriangle(Vector3 baryCoords);
 // The index of the halfedge in a triangular face,
 int halfedgeIndexInTriangle(Halfedge he);
 
+// The index of the vertex in a triangular face,
+int vertexIndexInTriangle(Vertex v, Face f);
+
 // Given barycentric coordinates defined by treating refHe.vertex() as the `x` coordinate, permute to the canonical
 // coordinate ordering for the face, which has face.halfedge().vertex() as the `x` coordinate.
 Vector3 permuteBarycentricToCanonical(Vector3 baryCoords, Halfedge refHe);
