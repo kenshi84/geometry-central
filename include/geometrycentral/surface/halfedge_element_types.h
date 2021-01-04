@@ -71,8 +71,15 @@ public:
   size_t degree() const;
   size_t faceDegree() const;
 
-  Halfedge connectingHalfedge(Vertex vOther) const; // a halfedge from this -- vOther if one exists; Halfedge() otherwise
-  Edge connectingEdge(Vertex vOther) const; // an edge from this -- vOther if one exists; Edge() otherwise
+  // a halfedge from this -- vOther if one exists; Halfedge() otherwise
+  Halfedge connectingHalfedge(Vertex vOther) const;
+
+  // an edge from this -- vOther if one exists; Edge() otherwise
+  Edge connectingEdge(Vertex vOther) const;
+
+  // a triangular face spanned by (*this, vOther1, vOther2); Face() otherwise
+  // The ordering of vOther1 & vOther2 is irrelevant
+  Face spanningFace(Vertex vOther1, Vertex vOther2) const;
 
   // Iterators
   NavigationSetBase<VertexAdjacentVertexNavigator> adjacentVertices() const;

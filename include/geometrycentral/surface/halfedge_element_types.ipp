@@ -110,6 +110,19 @@ inline Edge Vertex::connectingEdge(Vertex vOther) const {
   return Edge();
 }
 
+inline Face Vertex::spanningFace(Vertex vOther1, Vertex vOther2) const {
+  Halfedge he1 = connectingHalfedge(vOther1);
+  Halfedge he2 = connectingHalfedge(vOther2);
+
+  if (he1 == Halfedge()) return Face();
+  if (he2 == Halfedge()) return Face();
+
+  if (he1.next().tipVertex() == vOther2 && he1.next().next().tipVertex() == *this) return he1.face();
+  if (he2.next().tipVertex() == vOther1 && he2.next().next().tipVertex() == *this) return he2.face();
+
+  return Face();
+}
+
 // Navigation iterators 
 inline NavigationSetBase<VertexIncomingHalfedgeNavigator> Vertex::incomingHalfedges() const { 
   return NavigationSetBase<VertexIncomingHalfedgeNavigator>(halfedge().prevOrbitFace()); 
