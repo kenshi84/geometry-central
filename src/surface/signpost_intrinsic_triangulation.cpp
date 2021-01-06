@@ -1213,10 +1213,10 @@ Halfedge SignpostIntrinsicTriangulation::splitVertexAlongTwoEdges(Halfedge heA, 
       angleSum += cornerAngle(he.corner());
     }
     if (!found) {
-      throw "traceVec goes outside the vertex one-ring";
+      throw std::runtime_error("traceVec goes outside the vertex one-ring");
     }
     if (angleSum >= 2. * M_PI) {
-      throw "The vertex has extremely high sum of corner angles";
+      throw std::runtime_error("The vertex has extremely high sum of corner angles");
     }
   }
 
@@ -1246,7 +1246,7 @@ Halfedge SignpostIntrinsicTriangulation::splitVertexAlongTwoEdges(Halfedge heA, 
     Vector2 p0 = vertexTempPositions.at(he.tipVertex()) - vNew_tempPosition;
     Vector2 p1 = vertexTempPositions.at(he.next().tipVertex()) - vNew_tempPosition;
     if (cross(p0, p1) < 0)
-      throw "traceVec is infeasible (creates face with negative area)";
+      throw std::runtime_error("traceVec is infeasible (creates face with negative area)");
   }
 
   // Perform split topologically
