@@ -1415,6 +1415,43 @@ Halfedge SignpostIntrinsicTriangulation::splitEdge(Halfedge he, double tSplit) {
   return insertVertex_edge(SurfacePoint(he, tSplit));
 }
 
+void SignpostIntrinsicTriangulation::convertToEdgePoint(Vertex v, double faceCoordThreshold) {
+  SurfacePoint spBefore = vertexLocations[v];
+  GC_SAFETY_ASSERT(spBefore.type == SurfacePointType::Face, "convertToEdgePoint should be called upon vertex whose location is a face point");
+
+  // Check if face point is close enuogh to an edge
+  size_t minIndex;
+  if (min(spBefore.faceCoords, &minIndex) > faceCoordThreshold)
+    throw std::runtime_error("Smallest faceCoord is above threshold");
+
+  // Convert to edge point
+  SurfacePoint spAfter = spBefore;
+  spAfter.faceCoords[minIndex] = 0.;
+  spAfter.faceCoords /= sum(spAfter.faceCoords);
+  spAfter = spAfter.reduced();
+  GC_SAFETY_ASSERT(spAfter.type == SurfacePointType::Edge, "");
+  GC_SAFETY_ASSERT(checkAdjacent(spBefore, spAfter), "");
+
+  vertexLocations[v] = spAfter;
+
+  // Use the halfedge common to both face and edge to get the angle change
+  Halfedge heInput = spAfter.edge.halfedge();
+  if (heInput.face() != spBefore.face)
+    heInput = heInput.twin();
+  GC_SAFETY_ASSERT(heInput.face() == spBefore.face, "");
+
+  double angleDelta = -inputGeom.halfedgeVectorsInFace[heInput].arg();
+  if (heInput != spAfter.edge.halfedge())
+    angleDelta += M_PI;
+
+  // Update angle and vector for each outgoing halfedge
+  for (Halfedge he : v.outgoingHalfedges()) {
+    intrinsicHalfedgeDirections[he] = standardizeAngle(v, intrinsicHalfedgeDirections[he] + angleDelta);
+    halfedgeVectorsInVertex[he] = halfedgeVector(he);
+  }
+  intrinsicEdges_per_inputEdge = {};
+}
+
 void SignpostIntrinsicTriangulation::flipToDelaunay(std::function<bool(Edge)> flippableTest) {
 
   std::deque<Edge> edgesToCheck;

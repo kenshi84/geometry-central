@@ -215,6 +215,10 @@ public:
   // Split a halfedge
   Halfedge splitEdge(Halfedge he, double tSplit);
 
+  // Given inserted vertex (a face point) very close to being an edge point, convert it to an edge point, assuming
+  // we already have correct intrinsic edge lengths (thus we only update halfedge directions and vectors)
+  void convertToEdgePoint(Vertex v, double faceCoordThreshold = 1.e-10);
+
   // ======================================================
   // ======== Callbacks
   // ======================================================
