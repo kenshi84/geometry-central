@@ -1422,7 +1422,7 @@ void SignpostIntrinsicTriangulation::convertToEdgePoint(Vertex v, double faceCoo
   // Check if face point is close enuogh to an edge
   size_t minIndex;
   if (min(spBefore.faceCoords, &minIndex) > faceCoordThreshold)
-    throw std::runtime_error("Smallest faceCoord is above threshold");
+    throw std::runtime_error("Smallest faceCoord 10^(" + std::to_string(std::log10(spBefore.faceCoords[minIndex])) + ") is above threshold");
 
   // Convert to edge point
   SurfacePoint spAfter = spBefore;
