@@ -620,28 +620,38 @@ void SignpostIntrinsicTriangulation::sanitizeSignpost(const VertexPositionGeomet
       e.halfedge().twin()
     };
 
-    // Easy case: intrinsic edge is original
+    // Easy case: intrinsic edge is (partially) original
     Edge eInput;
-    if (isIntrinsicEdgeOriginal(e, &eInput)) {
+    double tEdgeMin, tEdgeMax;
+    bool reversed;
+    if (isIntrinsicEdgePartiallyOriginal(e, &eInput, &tEdgeMin,  &tEdgeMax, &reversed)) {
       // Copy edge length
-      intrinsicEdgeLengths[e] = inputGeom.edgeLengths[eInput];
+      intrinsicEdgeLengths[e] = (tEdgeMax - tEdgeMin) * inputGeom.edgeLengths[eInput];
 
       std::array<Halfedge, 2> heInput = {
         eInput.halfedge(),
         eInput.halfedge().twin()
       };
 
-      // Make he & heInput consistently ordered
-      if (vertexLocations[he[0].vertex()] != heInput[0].vertex())
-        std::swap(heInput[0], heInput[1]);
-      GC_SAFETY_ASSERT(vertexLocations[he[0].vertex()] == heInput[0].vertex(), "");
-      GC_SAFETY_ASSERT(vertexLocations[he[1].vertex()] == heInput[1].vertex(), "");
-
       // Copy halfedge direction
       for (int i = 0; i < 2; ++i) {
-        Vertex vInput = heInput[i].vertex();
-        double angleScaling = inputGeom.vertexAngleSums[vInput] / (vInput.isBoundary() ? M_PI : 2. * M_PI);
-        intrinsicHalfedgeDirections[he[i]] = inputGeom.halfedgeVectorsInVertex[heInput[i]].arg() * angleScaling;
+        SurfacePoint sp = vertexLocations[he[i].vertex()];
+
+        int j = i ^ reversed;     // he[i] and heInput[j] are oriented in the same direction
+
+        // If the endpoint is on an input vertex, copy the angle of the corresponding input halfedge
+        if (sp.type == SurfacePointType::Vertex) {
+          Vertex vInput = sp.vertex;
+          GC_SAFETY_ASSERT(heInput[j].vertex() == vInput, "");
+          double angleScaling = inputGeom.vertexAngleSums[vInput] / (vInput.isBoundary() ? M_PI : 2. * M_PI);
+          intrinsicHalfedgeDirections[he[i]] = standardizeAngle(he[i].vertex(), inputGeom.halfedgeVectorsInVertex[heInput[j]].arg() * angleScaling);
+
+        // If on an input edge, the angle is either 0 or PI
+        } else {
+          GC_SAFETY_ASSERT(sp.type == SurfacePointType::Edge, "");
+          GC_SAFETY_ASSERT(sp.edge == eInput, "");
+          intrinsicHalfedgeDirections[he[i]] = j ? M_PI : 0.;
+        }
       }
       continue;
     }
@@ -675,13 +685,6 @@ void SignpostIntrinsicTriangulation::sanitizeSignpost(const VertexPositionGeomet
       // Some sanity checks
       GC_SAFETY_ASSERT(sp0 == vertexLocations[he[i].vertex()], "");
       GC_SAFETY_ASSERT(checkAdjacent(sp0, sp1), "");
-      if (sp1.type == SurfacePointType::Edge) {
-        GC_SAFETY_ASSERT(n > 2, "");                                  // sp1 cannot be the other endpoint
-      } else {
-        GC_SAFETY_ASSERT(n == 2, "");
-        if (sp0.type ==SurfacePointType::Vertex)
-          GC_SAFETY_ASSERT(sp1.type == SurfacePointType::Face, "");   // We already know e is not original
-      }
 
       // Use this face to figure out angles
       Face fInput = sharedFace(sp0, sp1);
@@ -729,17 +732,36 @@ void SignpostIntrinsicTriangulation::sanitizeSignpost(const VertexPositionGeomet
 
       // Case 2: vertex was inserted to an input edge
       } else if (sp0.type == SurfacePointType::Edge) {
-        throw std::logic_error("Not implemented yet");
+        Vector2 pA = getPointFromFaceCoords(sp0.inFace(fInput).faceCoords);
+        Vector2 pB = getPointFromFaceCoords(sp1.inFace(fInput).faceCoords);
+        Vector2 dAB = pB - pA;
+
+        // Transform dAB from fInput's local frame to eInput's local frame
+        Edge eInput = sp0.edge;
+        // Get halfedge adjacent to eInput and fInput
+        Halfedge heInput = eInput.halfedge();
+        if (heInput.face() != fInput)
+          heInput = heInput.twin();
+        GC_SAFETY_ASSERT(heInput.face() == fInput, "");
+        // Measure dAB relative to heInput
+        dAB /= normalize(inputGeom.halfedgeVectorsInFace[heInput]);
+        // If heInput is not eInput's canonical orientation, reverse the vector
+        if (heInput != eInput.halfedge())
+          dAB = -dAB;
+
+        intrinsicHalfedgeDirections[he[i]] = standardizeAngle(he[i].vertex(), arg(dAB));
 
       // Case 3: vertex was inserted to an input face
       } else {
         GC_SAFETY_ASSERT(sp0.type == SurfacePointType::Face, "");
+        GC_SAFETY_ASSERT(sp0.face == fInput, "");
 
         // The vector in this local coordinate system is already what we need
         Vector2 pA = getPointFromFaceCoords(sp0.faceCoords);
         Vector2 pB = getPointFromFaceCoords(sp1.inFace(fInput).faceCoords);
+        Vector2 dAB = pB - pA;
 
-        intrinsicHalfedgeDirections[he[i]] = standardizeAngle(he[i].vertex(), arg(pB - pA));
+        intrinsicHalfedgeDirections[he[i]] = standardizeAngle(he[i].vertex(), arg(dAB));
       }
     }
   }
