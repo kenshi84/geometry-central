@@ -223,8 +223,13 @@ SurfacePoint SignpostIntrinsicTriangulation::equivalentPointOnInput(SurfacePoint
 
   // If intrinsicMesh edge is preserved, simply return it. Otherwise treat it as a face point.
   if (pointOnIntrinsic.type == SurfacePointType::Edge) {
-    if (isIntrinsicEdgeOriginal(pointOnIntrinsic.edge)) {
-      return SurfacePoint(inputMesh.edge(pointOnIntrinsic.edge.getIndex()), pointOnIntrinsic.tEdge);
+    Edge eInput;
+    double tEdgeMin, tEdgeMax;
+    bool reversed;
+    if (isIntrinsicEdgePartiallyOriginal(pointOnIntrinsic.edge, &eInput, &tEdgeMin, &tEdgeMax, &reversed)) {
+      double tEdge = (1. - pointOnIntrinsic.tEdge) * (reversed ? tEdgeMax : tEdgeMin) +
+                           pointOnIntrinsic.tEdge  * (reversed ? tEdgeMin : tEdgeMax);
+      return SurfacePoint(eInput, tEdge);
     }
     pointOnIntrinsic = pointOnIntrinsic.inSomeFace();
   }
@@ -341,17 +346,26 @@ bool SignpostIntrinsicTriangulation::isDelaunay() {
 
 bool SignpostIntrinsicTriangulation::isIntrinsicEdgeOriginal(Edge eIntrinsic, Edge* eInput_ptr, bool* reversed_ptr) const {
   SurfacePoint sp0 = vertexLocations[eIntrinsic.halfedge().vertex()];
-  SurfacePoint sp1 = vertexLocations[eIntrinsic.halfedge().twin().vertex()];
+  SurfacePoint sp1 = vertexLocations[eIntrinsic.halfedge().tipVertex()];
 
   if (sp0.type != SurfacePointType::Vertex) return false;
   if (sp1.type != SurfacePointType::Vertex) return false;
 
-  Edge eInput = sp0.vertex.connectingEdge(sp1.vertex);
-  if (eInput.getMesh()) {
+  Halfedge heInput = sp0.vertex.connectingHalfedge(sp1.vertex);
+  if (heInput == Halfedge())
+    return false;
+  Edge eInput = heInput.edge();
+
+  // An intrinsic edge connecting a pair of vertices connected by an input edge *could* be non-original when it detours around another adjacent convex vertex
+  // We test originality by checking the edge length (non-original edges always have greater lengths than original)
+  if (intrinsicEdgeLengths[eIntrinsic] < 1.001 * inputGeom.edgeLengths[eInput]) {    // Not sure what threshold to use...
+    GC_SAFETY_ASSERT(intrinsicEdgeLengths[eIntrinsic] > 0.999 * inputGeom.edgeLengths[eInput], "Erroneous intrinsic edge length due to numerical misfortune");
     if (eInput_ptr)
       *eInput_ptr = eInput;
+
     if (reversed_ptr)
       *reversed_ptr = eInput.halfedge().vertex() == sp1.vertex;
+
     return true;
   }
   return false;
@@ -393,52 +407,43 @@ bool SignpostIntrinsicTriangulation::isIntrinsicEdgePartiallyOriginal(Edge eIntr
     return false;
   }
 
-  Edge inputE0 = sp0.edge;
-  Edge inputE1 = sp1.edge;
+  // Figure out which of sp0 or sp1 is on which vertex or edge
+  Edge inputE;  // The common input edge
 
-  // At least one of the two endpoints should be on an edge
-  GC_SAFETY_ASSERT(inputE0 != Edge() || inputE1 != Edge(), "");
+  if (sp0.type == SurfacePointType::Edge && sp1.type == SurfacePointType::Edge) {
+    if (sp0.edge != sp1.edge)
+      return false;
+    inputE = sp0.edge;
 
-  if (inputE0 != Edge() && inputE1 != Edge()) {
-    if (inputE0 == inputE1) {
-      if (eInput_ptr)
-        *eInput_ptr = inputE0;
-      if (tEdgeMin_ptr) *tEdgeMin_ptr = std::min<double>(sp0.tEdge, sp1.tEdge);
-      if (tEdgeMax_ptr) *tEdgeMax_ptr = std::max<double>(sp0.tEdge, sp1.tEdge);
-      if (reversed_ptr)
-        *reversed_ptr = sp0.tEdge > sp1.tEdge;
-      return true;
-    }
-    return false;
+  } else if (sp0.type == SurfacePointType::Edge) {
+    GC_SAFETY_ASSERT(sp1.type == SurfacePointType::Vertex, "");
+    inputE = sp0.edge;
+    if (sp1.vertex != inputE.halfedge().vertex() && sp1.vertex != inputE.halfedge().tipVertex())
+      return false;
+    sp1 = sp1.inEdge(inputE);
+
+  } else {
+    GC_SAFETY_ASSERT(sp0.type == SurfacePointType::Vertex, "");
+    GC_SAFETY_ASSERT(sp1.type == SurfacePointType::Edge, "");
+    inputE = sp1.edge;
+    if (sp0.vertex != inputE.halfedge().vertex() && sp0.vertex != inputE.halfedge().tipVertex())
+      return false;
+    sp0 = sp0.inEdge(inputE);
   }
 
-  Vertex inputV0 = sp0.vertex;
-  Vertex inputV1 = sp1.vertex;
-
-  if (inputE0 != Edge()) {
-    GC_SAFETY_ASSERT(inputV1 != Vertex(), "");
-    if (inputE0.halfedge().tailVertex() == inputV1 || inputE0.halfedge().tipVertex() == inputV1) {
-      if (eInput_ptr)
-        *eInput_ptr = inputE0;
-      sp1 = sp1.inEdge(inputE0);
-      if (tEdgeMin_ptr) *tEdgeMin_ptr = std::min<double>(sp0.tEdge, sp1.tEdge);
-      if (tEdgeMax_ptr) *tEdgeMax_ptr = std::max<double>(sp0.tEdge, sp1.tEdge);
-      if (reversed_ptr)
-        *reversed_ptr = sp0.tEdge > sp1.tEdge;
-      return true;
-    }
-    return false;
-  }
-
-  GC_SAFETY_ASSERT(inputE1 != Edge() && inputV0 != Vertex(), "");
-  if (inputE1.halfedge().tailVertex() == inputV0 || inputE1.halfedge().tipVertex() == inputV0) {
+  // There *could* exist a non-original intrinsic edge connecting sp0 & sp1 on the same input edge
+  // We test originality by checking the edge length (non-original edges always have greater lengths than original)
+  if (intrinsicEdgeLengths[eIntrinsic] < 1.001 * std::fabs(sp0.tEdge - sp1.tEdge) * inputGeom.edgeLengths[inputE]) {    // Not sure what threshold to use...
+    GC_SAFETY_ASSERT(intrinsicEdgeLengths[eIntrinsic] > 0.999 * std::fabs(sp0.tEdge - sp1.tEdge) * inputGeom.edgeLengths[inputE], "Erroneous intrinsic edge length due to numerical misfortune");
     if (eInput_ptr)
-      *eInput_ptr = inputE1;
-    sp0 = sp0.inEdge(inputE1);
+      *eInput_ptr = inputE;
+
     if (tEdgeMin_ptr) *tEdgeMin_ptr = std::min<double>(sp0.tEdge, sp1.tEdge);
     if (tEdgeMax_ptr) *tEdgeMax_ptr = std::max<double>(sp0.tEdge, sp1.tEdge);
+
     if (reversed_ptr)
       *reversed_ptr = sp0.tEdge > sp1.tEdge;
+
     return true;
   }
   return false;
