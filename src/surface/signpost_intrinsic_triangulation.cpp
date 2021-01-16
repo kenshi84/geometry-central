@@ -605,6 +605,11 @@ std::vector<SurfacePoint> getGeodesicBetweenSurfacePoints(
       sp = SurfacePoint(inputF, Vector3::zero());
       sp.faceCoords += (1. - tempSP.tEdge) * sp0.faceCoords + tempSP.tEdge * sp1.faceCoords;
       sp = sp.reduced();
+
+      // If the computed path point is on tempMesh's edge that isn't on inputMesh's edge, 
+      // the blended result will be a face point, which should be ignored
+      if (sp.type == SurfacePointType::Face)
+        continue;
     }
 
     GC_SAFETY_ASSERT(sp.type == SurfacePointType::Edge, "");
