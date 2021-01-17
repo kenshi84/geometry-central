@@ -344,6 +344,13 @@ bool SignpostIntrinsicTriangulation::isDelaunay() {
   return true;
 }
 
+namespace {
+  // If an intrinsic edge eIntrinsic is connecting a pair of vertices which are connected by an original edge eInput,
+  // consider it as original if intrinsicEdgeLengths[eIntrinsic] < (1. + eps) * inputGeom.edgeLengths[eInput]
+  // TODO: This feels a bit fragile... Is there any other robust way of testing it?
+  const double edgeOriginalityEPS = 0.05;
+}
+
 bool SignpostIntrinsicTriangulation::isIntrinsicEdgeOriginal(Edge eIntrinsic, Edge* eInput_ptr, bool* reversed_ptr) const {
   SurfacePoint sp0 = vertexLocations[eIntrinsic.halfedge().vertex()];
   SurfacePoint sp1 = vertexLocations[eIntrinsic.halfedge().tipVertex()];
@@ -358,8 +365,8 @@ bool SignpostIntrinsicTriangulation::isIntrinsicEdgeOriginal(Edge eIntrinsic, Ed
 
   // An intrinsic edge connecting a pair of vertices connected by an input edge *could* be non-original when it detours around another adjacent convex vertex
   // We test originality by checking the edge length (non-original edges always have greater lengths than original)
-  if (intrinsicEdgeLengths[eIntrinsic] < 1.001 * inputGeom.edgeLengths[eInput]) {    // Not sure what threshold to use...
-    GC_SAFETY_ASSERT(intrinsicEdgeLengths[eIntrinsic] > 0.999 * inputGeom.edgeLengths[eInput], "Erroneous intrinsic edge length due to numerical misfortune");
+  if (intrinsicEdgeLengths[eIntrinsic] < (1. + edgeOriginalityEPS) * inputGeom.edgeLengths[eInput]) {    // Not sure what threshold to use...
+    GC_SAFETY_ASSERT(intrinsicEdgeLengths[eIntrinsic] > (1. - edgeOriginalityEPS) * inputGeom.edgeLengths[eInput], "Erroneous intrinsic edge length due to numerical misfortune");
     if (eInput_ptr)
       *eInput_ptr = eInput;
 
@@ -433,8 +440,8 @@ bool SignpostIntrinsicTriangulation::isIntrinsicEdgePartiallyOriginal(Edge eIntr
 
   // There *could* exist a non-original intrinsic edge connecting sp0 & sp1 on the same input edge
   // We test originality by checking the edge length (non-original edges always have greater lengths than original)
-  if (intrinsicEdgeLengths[eIntrinsic] < 1.001 * std::fabs(sp0.tEdge - sp1.tEdge) * inputGeom.edgeLengths[inputE]) {    // Not sure what threshold to use...
-    GC_SAFETY_ASSERT(intrinsicEdgeLengths[eIntrinsic] > 0.999 * std::fabs(sp0.tEdge - sp1.tEdge) * inputGeom.edgeLengths[inputE], "Erroneous intrinsic edge length due to numerical misfortune");
+  if (intrinsicEdgeLengths[eIntrinsic] < (1. + edgeOriginalityEPS) * std::fabs(sp0.tEdge - sp1.tEdge) * inputGeom.edgeLengths[inputE]) {    // Not sure what threshold to use...
+    GC_SAFETY_ASSERT(intrinsicEdgeLengths[eIntrinsic] > (1. - edgeOriginalityEPS) * std::fabs(sp0.tEdge - sp1.tEdge) * inputGeom.edgeLengths[inputE], "Erroneous intrinsic edge length due to numerical misfortune");
     if (eInput_ptr)
       *eInput_ptr = inputE;
 
